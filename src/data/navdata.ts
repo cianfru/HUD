@@ -74,3 +74,19 @@ export const DEMO_ALTERNATES: Array<{ ident: string; suitable: boolean }> = [
   { ident: 'OMFJ', suitable: true },
   { ident: 'OMAA', suitable: false },
 ];
+
+/**
+ * Illustrative field detail shown on the target-lock card. Runway lengths are
+ * approximate reference values; `metar` is placeholder text (no live uplink
+ * yet). DEMO DATA ONLY — not for operational use.
+ */
+export const DEMO_AIRPORT_DETAIL: Record<
+  string,
+  { rwy: string; metar: string }
+> = {
+  OMDB: { rwy: '12R/30L · 4000 m', metar: '31008KT CAVOK 34/12 Q1010' },
+  OMDW: { rwy: '12/30 · 4500 m', metar: '30010KT 9999 FEW040 33/14 Q1010' },
+  OMSJ: { rwy: '12/30 · 4060 m', metar: '32009KT 9999 SCT045 35/11 Q1009' },
+  OMFJ: { rwy: '11/29 · 3750 m', metar: '14006KT 9999 FEW035 32/18 Q1010' },
+  OMAA: { rwy: '13L/31R · 4100 m', metar: '30012G22KT 4000 DU 36/09 Q1008' },
+};

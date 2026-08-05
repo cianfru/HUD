@@ -27,6 +27,38 @@ best one highlighted. All data derives from a **Garmin GLO** GPS.
 
 ---
 
+## Head-slewed target acquisition (the signature interaction)
+
+Turn your head to look around the world; airports appear **where they actually
+are** in azimuth. Park the reticle on one, click the **R1 ring** to lock it, and
+its detail card opens — ident, name, bearing, distance, ETE, runway, METAR, and
+suitability. An off-screen cue (`◀ OMDW 28°`) points your head toward the nearest
+suitable field.
+
+<p align="center">
+  <img src="docs/screenshots/target-sweep.png" width="32%" alt="Sweeping — cue points to fields" />
+  <img src="docs/screenshots/target-candidate.png" width="32%" alt="Reticle on a candidate" />
+  <img src="docs/screenshots/target-locked.png" width="32%" alt="Locked — detail card" />
+</p>
+
+Why this is feasible where a conformal HUD is not: it needs only head **azimuth
+(yaw)** — targets are placed by *bearing minus head direction* — not aircraft
+attitude, so it never touches the leans-prone gravity fusion. Honest caveats
+baked in:
+
+- **Yaw drifts.** Integrated head-gyro azimuth has no reliable cockpit heading
+  reference, so it slowly wanders; the design expects a "look ahead + ring click
+  to re-centre" gesture. (In the simulator, head angle is exact.)
+- **~10 Hz, BLE-latent.** The G2 IMU reports at ≤10 Hz — this is "look, settle,
+  click", not fast flicks.
+- Head IMU gives *head* orientation, never aircraft attitude; nothing here is an
+  attitude reference.
+
+Try it: `npm run dev`, then move the mouse (= your head), `Enter`/`Space` to lock.
+`V` cycles to the PFD and minimal views.
+
+---
+
 ## The platform, in one paragraph
 
 A G2 "app" is a **web app** loaded into a WebView on the paired iPhone; the
