@@ -43,6 +43,11 @@ export interface LockedTarget {
   suitable: boolean;
   rwy: string;
   metar: string;
+  /** Live-weather extras (mobile MVP); omitted in the sim. */
+  fltCat?: string;
+  taf?: string | null;
+  atis?: string | null;
+  ageSec?: number | null;
 }
 
 export interface TargetViewState {
@@ -299,34 +304,100 @@ function drawFooter(ctx: CanvasRenderingContext2D, s: TargetViewState, pal: Pale
 
 function drawLockCard(ctx: CanvasRenderingContext2D, t: LockedTarget, pal: Palette): void {
   // Dim the sweep behind the card.
-  ctx.fillStyle = 'rgba(1,6,3,0.72)';
+  ctx.fillStyle = 'rgba(1,6,3,0.78)';
   ctx.fillRect(0, 0, W, H);
 
-  const x0 = 64;
-  const y0 = 48;
-  const x1 = W - 64;
-  const y1 = H - 52;
+  const x0 = 40;
+  const y0 = 30;
+  const x1 = W - 40;
+  const y1 = H - 26;
   ctx.strokeStyle = pal.bright;
   ctx.lineWidth = 2;
   ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
 
-  const lx = x0 + 20;
-  text(ctx, `▣ LOCKED   ${t.ident}`, lx, y0 + 24, 17, pal.bright, 'left', 700);
-  text(ctx, t.suitable ? 'SUITABLE' : 'NOT SUITABLE', x1 - 20, y0 + 24, 12, t.suitable ? pal.mid : pal.dim, 'right', 700);
-  text(ctx, t.name, lx, y0 + 48, 12, pal.dim, 'left');
+  const lx = x0 + 16;
+  const wrapChars = Math.floor((x1 - x0 - 32) / 6.4); // ~chars per line at 11px mono
+  let y = y0 + 22;
 
+  const status = t.fltCat
+    ? `${t.fltCat}${t.suitable ? '' : ' · NOT SUITABLE'}`
+    : t.suitable
+      ? 'SUITABLE'
+      : 'NOT SUITABLE';
+  text(ctx, `▣ LOCKED   ${t.ident}`, lx, y, 16, pal.bright, 'left', 700);
+  text(ctx, status, x1 - 16, y, 12, t.suitable ? pal.mid : pal.dim, 'right', 700);
+  y += 21;
+  text(ctx, t.name, lx, y, 11, pal.dim, 'left');
+  y += 22;
   text(
     ctx,
-    `BRG ${formatDeg(t.bearingDeg)}°    DIST ${t.distanceNm.toFixed(0)} NM    ETE ${formatDuration(t.eteSec)}`,
+    `BRG ${formatDeg(t.bearingDeg)}°   DIST ${t.distanceNm.toFixed(0)} NM   ETE ${formatDuration(t.eteSec)}`,
     lx,
-    y0 + 76,
-    14,
+    y,
+    13,
     pal.mid,
     'left',
     700,
   );
-  text(ctx, `RWY ${t.rwy}`, lx, y0 + 100, 13, pal.mid, 'left');
-  text(ctx, `METAR ${t.metar}`, lx, y0 + 122, 11, pal.dim, 'left');
+  y += 21;
 
-  text(ctx, '◦ ring: release      demo data', lx, y1 - 16, 11, pal.dim, 'left');
+  if (t.rwy) {
+    text(ctx, `RWY ${t.rwy}`, lx, y, 11, pal.mid, 'left');
+    y += 18;
+  }
+  y = wrapBlock(ctx, 'METAR', t.metar, lx, y, wrapChars, 2, pal.mid, pal.dim, y1);
+  if (t.taf) y = wrapBlock(ctx, 'TAF', t.taf, lx, y, wrapChars, 2, pal.mid, pal.dim, y1);
+  if (t.atis) y = wrapBlock(ctx, 'ATIS', t.atis, lx, y, wrapChars, 3, pal.mid, pal.dim, y1);
+
+  const age = t.ageSec != null ? ` · obs ${Math.round(t.ageSec / 60)}m ago` : '';
+  text(ctx, `◦ tap: release${age}`, lx, y1 - 14, 11, pal.dim, 'left');
+}
+
+/** Draw "LABEL value" with the value word-wrapped to `maxLines`; returns new y. */
+function wrapBlock(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  maxChars: number,
+  maxLines: number,
+  labelCol: string,
+  valCol: string,
+  yLimit: number,
+): number {
+  const lines = wrapText(`${label} ${value}`, maxChars, maxLines);
+  for (let i = 0; i < lines.length; i++) {
+    if (y > yLimit - 14) break;
+    text(ctx, lines[i]!, x, y, 11, i === 0 ? labelCol : valCol, 'left');
+    y += 15;
+  }
+  return y + 3;
+}
+
+function wrapText(s: string, maxChars: number, maxLines: number): string[] {
+  const words = s.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let cur = '';
+  let consumed = 0;
+  for (const w of words) {
+    const attempt = cur ? `${cur} ${w}` : w;
+    if (attempt.length > maxChars && cur) {
+      lines.push(cur);
+      cur = w;
+      if (lines.length === maxLines) {
+        cur = '';
+        break;
+      }
+    } else {
+      cur = attempt;
+    }
+    consumed++;
+  }
+  if (cur && lines.length < maxLines) lines.push(cur);
+  if (consumed < words.length && lines.length) {
+    const last = lines[lines.length - 1]!;
+    lines[lines.length - 1] = (last.length > maxChars - 1 ? last.slice(0, maxChars - 1) : last) + '…';
+  }
+  return lines;
 }

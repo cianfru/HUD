@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node scripts/fetch-airports.mjs && vite build --config vite.mobile.config.ts",
+  "outputDirectory": "dist-mobile",
+  "installCommand": "npm install",
+  "framework": null
+}

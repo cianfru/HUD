@@ -15,6 +15,7 @@
 import { computeAlternates } from '../core/diversion.js';
 import type { AlternateCandidate, Alternate } from '../core/diversion.js';
 import { nearbyAirports, airportCount } from '../data/airports.js';
+import { WeatherStore } from '../data/weather.js';
 import { angleDiffDeg } from '../core/geo.js';
 import { MPS_TO_KNOTS, METERS_TO_FEET } from '../core/units.js';
 import { formatUtcClock } from '../core/time.js';
@@ -47,6 +48,13 @@ let day = false;
 let lockedIdent: string | null = null;
 let gpsMsg = 'waiting for GPS…';
 
+const weather = new WeatherStore();
+const atisText = new Map<string, string | null>();
+
+function nearbyIdents(): string[] {
+  return fix ? nearbyAirports(fix, 250, 12).map((a) => a.ident) : [];
+}
+
 // --- sizing ---
 function resize(): void {
   const dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -76,7 +84,9 @@ function onPosition(p: GeolocationPosition): void {
     accuracyM: c.accuracy,
     timestamp: p.timestamp,
   };
-  gpsMsg = `GPS ±${Math.round(c.accuracy)}m · ${airportCount()} airports loaded`;
+  gpsMsg = `GPS ±${Math.round(c.accuracy)}m · ${airportCount()} airports`;
+  // Keep weather fresh for the fields around us (the store throttles/caches).
+  void weather.ensure(nearbyIdents());
 }
 
 async function requestPermissions(): Promise<void> {
@@ -118,8 +128,10 @@ function showError(msg: string): void {
 // --- state assembly ---
 function candidates(): AlternateCandidate[] {
   if (!fix) return [];
-  // No live weather yet, so every nearby field is treated as suitable.
-  return nearbyAirports(fix, 250, 12).map((waypoint) => ({ waypoint, suitable: true }));
+  return nearbyAirports(fix, 250, 12).map((waypoint) => ({
+    waypoint,
+    suitable: weather.suitability(waypoint.ident),
+  }));
 }
 
 function alternates(): Alternate[] {
@@ -138,6 +150,7 @@ function lockedTarget(alts: Alternate[]): LockedTarget | null {
   if (!lockedIdent) return null;
   const a = alts.find((x) => x.waypoint.ident === lockedIdent);
   if (!a) return null;
+  const wx = weather.get(a.waypoint.ident);
   return {
     ident: a.waypoint.ident,
     name: a.waypoint.name ?? a.waypoint.ident,
@@ -145,8 +158,12 @@ function lockedTarget(alts: Alternate[]): LockedTarget | null {
     distanceNm: a.distanceNm,
     eteSec: a.eteSec,
     suitable: a.suitable,
-    rwy: '— (no navdata in MVP)',
-    metar: 'weather uplink: not wired yet',
+    rwy: '',
+    metar: wx?.metarRaw ?? 'fetching weather…',
+    fltCat: wx?.fltCat,
+    taf: wx?.tafRaw ?? null,
+    atis: atisText.get(a.waypoint.ident) ?? null,
+    ageSec: weather.ageSec(a.waypoint.ident),
   };
 }
 
@@ -214,7 +231,12 @@ display.addEventListener('pointerdown', () => {
     return;
   }
   const c = pickCandidate(alternates(), headOffset());
-  if (c) lockedIdent = c.waypoint.ident;
+  if (c) {
+    lockedIdent = c.waypoint.ident;
+    // Pull fresh weather + D-ATIS for the locked field.
+    void weather.ensure([lockedIdent]);
+    void weather.ensureAtis(lockedIdent).then((a) => atisText.set(c.waypoint.ident, a));
+  }
 });
 
 $('btnMode').addEventListener('click', () => {
