@@ -63,14 +63,16 @@
     </style>
   </head>
   <body>
-    <h1>Even G2 · Aviation HUD Simulator</h1>
+    <h1>Even G2 · PFD Aviation HUD Simulator</h1>
     <div class="glasses"><canvas id="hud"></canvas></div>
-    <div class="caption">576 × 288 · monochrome green · flying the demo route <strong id="route"></strong></div>
+    <div class="caption">
+      576 × 288 · monochrome green · PFD layout (GS left · GPS-ALT right · track tape bottom) ·
+      track-up diversion plan · route <strong id="route"></strong> · mode <strong id="mode">CRUISE</strong>
+    </div>
 
     <div class="panel">
-      <span class="k"><kbd>↓</kbd> / <kbd>↑</kbd></span><span>Swipe down / up — change page (CRUISE · ROUTE · SETTINGS)</span>
-      <span class="k"><kbd>Enter</kbd> / <kbd>Space</kbd></span><span>Press — CRUISE: skip to next waypoint · SETTINGS: toggle auto-sequence</span>
-      <span class="k"><kbd>D</kbd></span><span>Double-press — toggle UTC / local clock</span>
+      <span class="k"><kbd>N</kbd></span><span>Toggle night / day background (see-through readability)</span>
+      <span class="k"><kbd>T</kbd></span><span>Toggle CRUISE / DIVERT mode</span>
       <span class="k"><kbd>[</kbd> / <kbd>]</kbd></span><span>Slow down / speed up the simulated flight</span>
     </div>
 

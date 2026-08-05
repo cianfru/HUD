@@ -13,6 +13,9 @@ import type { Waypoint } from '../core/types.js';
 export const AIRPORTS: Record<string, Waypoint> = {
   OTHH: { ident: 'OTHH', name: 'Doha / Hamad Intl', lat: 25.2731, lon: 51.6081, kind: 'airport' },
   OMDB: { ident: 'OMDB', name: 'Dubai Intl', lat: 25.2528, lon: 55.3644, kind: 'airport' },
+  OMDW: { ident: 'OMDW', name: 'Dubai / Al Maktoum', lat: 24.8968, lon: 55.1614, kind: 'airport' },
+  OMSJ: { ident: 'OMSJ', name: 'Sharjah Intl', lat: 25.3286, lon: 55.5172, kind: 'airport' },
+  OMFJ: { ident: 'OMFJ', name: 'Fujairah Intl', lat: 25.1122, lon: 56.324, kind: 'airport' },
   OMAA: { ident: 'OMAA', name: 'Abu Dhabi Intl', lat: 24.433, lon: 54.6511, kind: 'airport' },
   OBBI: { ident: 'OBBI', name: 'Bahrain Intl', lat: 26.2708, lon: 50.6336, kind: 'airport' },
   OKBK: { ident: 'OKBK', name: 'Kuwait Intl', lat: 29.2266, lon: 47.9689, kind: 'airport' },
@@ -57,3 +60,17 @@ export function findWaypoint(token: string): Waypoint | null {
 
 /** The demo flight plan route string (Doha -> Dubai, Gulf corridor). */
 export const DEMO_ROUTE_STRING = 'OTHH DCT GLF01 GLF02 GLF03 DCT OMDB';
+
+/**
+ * Candidate diversion alternates for the demo (UAE cluster ahead of the route).
+ * The `suitable` flag stands in for a live weather/NOTAM check — a later
+ * iteration would source it from METAR/TAF over Starlink. OMAA is marked
+ * unsuitable here purely to demonstrate the hollow-ring (not-suitable) state.
+ */
+export const DEMO_ALTERNATES: Array<{ ident: string; suitable: boolean }> = [
+  { ident: 'OMDB', suitable: true },
+  { ident: 'OMDW', suitable: true },
+  { ident: 'OMSJ', suitable: true },
+  { ident: 'OMFJ', suitable: true },
+  { ident: 'OMAA', suitable: false },
+];

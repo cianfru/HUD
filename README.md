@@ -1,13 +1,14 @@
 # Aviation HUD for Even Realities G2
 
-A wearable **heads-up situational-awareness display** for the [Even Realities
+A wearable **PFD-style heads-up display** for the [Even Realities
 **G2**](https://hub.evenrealities.com/docs/get-started/overview) smart glasses,
 tuned for **airline cruise (A320)** and other **non-critical phases of flight**.
-It shows just the right information — at a glance — derived from a **Garmin GLO**
-GPS: ground speed, track, GPS altitude, next-waypoint guidance, and a
-destination/ETA roll-up on UTC.
+It follows primary-flight-display convention — **ground speed left, GPS altitude
+right, track tape at the bottom** — with a **track-up diversion plan** in the
+centre that shows the nearest **suitable alternates by bearing and distance**,
+best one highlighted. All data derives from a **Garmin GLO** GPS.
 
-![CRUISE view](docs/screenshots/cruise.png)
+![PFD view](docs/screenshots/pfd-cruise.png)
 
 > ### ⚠️ Read this first — experimental & supplemental only
 >
@@ -40,32 +41,39 @@ status come through the SDK's [`EvenAppBridge`](https://hub.evenrealities.com/do
 the Garmin GLO feeds `onAppLocationChanged` transparently as an iOS MFi
 location source.
 
-## What it shows
+## What it shows — PFD layout
 
-**CRUISE** — the primary at-a-glance strip:
-
-| Row | Fields |
+| Region | Content |
 | --- | --- |
-| Status | UTC (or local) clock · elapsed timer `ET` · `GPS ✓ ±acc battery%` |
-| Primary | `GS` ground speed (kt) · `TRK` ground track (°) · `GPSALT` GPS altitude (ft) |
-| Active waypoint | `→ IDENT · BRG · DIST (NM) · ETE` |
-| Destination | `DEST IDENT · DIST · ETA (UTC)` |
+| **Left** | `GS` ground speed (kt), boxed |
+| **Right** | `GPS ALT` geometric GPS altitude (ft), boxed |
+| **Bottom** | Track/heading tape with the current ground track boxed under the lubber |
+| **Top** | Best-divert callout: `◈ IDENT · bearing · distance · WX · ETE` |
+| **Centre** | Track-up **diversion plan**: forward range fan (50/100/150/200 NM), ownship, and alternates plotted by bearing & distance |
 
-**ROUTE** — the flight plan with the active waypoint marked and leg distances.
-**SETTINGS** — clock (UTC/local), auto-sequence, and the gesture legend.
+### Diversion plan — state without colour
 
-<p align="center">
-  <img src="docs/screenshots/route.png" width="49%" alt="ROUTE view" />
-  <img src="docs/screenshots/settings.png" width="49%" alt="SETTINGS view" />
-</p>
+The G2 is monochrome green (no amber), so alternate status is carried by
+**brightness and fill**, never colour:
 
-### Controls (temple touchpad or R1 ring)
+- **Best alternate** — bright filled **◆ diamond** + ident + bearing/distance (nearest suitable field).
+- **Other suitable fields** — dim ring with a filled centre dot.
+- **Not suitable** (weather/NOTAM) — dim **hollow** ring.
 
-| Gesture | Action |
+"Suitability" is currently a stub flag on the demo alternates; a later iteration
+sources it from live weather (METAR/TAF, e.g. over Starlink).
+
+![DIVERT mode, day palette](docs/screenshots/pfd-divert.png)
+
+### Controls (simulator)
+
+| Key | Action |
 | --- | --- |
-| Swipe down / up | Next / previous page (CRUISE · ROUTE · SETTINGS) |
-| Press | CRUISE: skip to next waypoint · SETTINGS: toggle auto-sequence |
-| Double-press | Toggle UTC / local clock |
+| `N` | Toggle night / day palette |
+| `T` | Toggle CRUISE / DIVERT mode |
+| `[` / `]` | Slow down / speed up the simulated flight |
+
+On hardware these map to the temple touchpad / R1 ring gestures (press, double-press, swipe).
 
 ## Run the simulator (no hardware needed)
 
@@ -75,15 +83,8 @@ npm run dev        # opens the in-browser simulator
 ```
 
 The simulator renders a faithful 576 × 288 monochrome-green display and **flies
-a demo route** (`OTHH → OMDB`, Gulf corridor) so every field is live. Drive it
-with the keyboard:
-
-| Key | Effect |
-| --- | --- |
-| `↓` / `↑` | Change page |
-| `Enter` / `Space` | Press |
-| `D` | Double-press (toggle clock) |
-| `[` / `]` | Slow down / speed up the simulated flight |
+a demo route** (`OTHH → OMDB`, Gulf corridor) so every field is live, with UAE
+alternates in the forward fan. Controls are in the table above (`N` / `T` / `[` `]`).
 
 Other scripts:
 
@@ -95,8 +96,8 @@ npm run build      # typecheck + build the simulator bundle
 
 ## Architecture
 
-The whole app is written against a small **`GlassesBridge`** seam, so the exact
-same controller/renderer runs on real glasses or in the browser simulator.
+Pure, unit-tested nav math at the core; a canvas PFD renderer for the display;
+and a **`GlassesBridge`** seam for the on-device text/input path.
 
 ```
 src/
@@ -105,42 +106,57 @@ src/
     units.ts      m/s↔kt, m↔ft, glanceable formatting
     time.ts       UTC clock, ETE, ETA
     flightplan.ts Route + active-leg tracking → Guidance
+    diversion.ts  rank suitable alternates by bearing / distance / ETE
   data/
-    navdata.ts        bundled airports + demo route (illustrative, not for nav)
+    navdata.ts        bundled airports + demo route + demo alternates (not for nav)
     route-parser.ts   "OTHH DCT GLF01 … OMDB" → waypoints
     position/         PositionSource: SDK (Garmin GLO) + simulated flight
+  hud/
+    pfd.ts        the PFD renderer (speed L · alt R · track tape · diversion plan)
+    model.ts / views.ts / renderer.ts   text-container views + diff (device path)
   bridge/
     bridge.ts     GlassesBridge interface (display + input)
     even-sdk.ts   real bridge over @evenrealities/even_hub_sdk
-    sim-bridge.ts canvas bridge emulating the 576×288 green display
-  hud/
-    model.ts      HudState + views
-    views.ts      CRUISE / ROUTE / SETTINGS layouts (fit the ≤12-container budget)
-    renderer.ts   diffs frames → minimal no-flicker text updates
-  app/controller.ts  state machine: sources → flight plan → renderer + gestures
+    sim-bridge.ts canvas text-container bridge
+  app/controller.ts  state machine for the text/container path + gestures
   main.ts       on-device entry (WebView)
-  sim/          browser dev harness (canvas + keyboard)
+  sim/          browser dev harness — renders pfd.ts from live simulated data
 ```
 
-Data flow: **PositionSource** (Garmin GLO / simulated) → **FlightPlan.guidance()**
-→ **HudState** → **views** → **HudRenderer** (diff) → **GlassesBridge** → display.
+Data flow (simulator): **PositionSource** (Garmin GLO / simulated) →
+**computeAlternates()** + **FlightPlan** → **PfdState** → **drawPfd()** → canvas.
+
+## Rendering on hardware
+
+The G2 SDK renders **≤ 12 absolutely-positioned containers** (text / list /
+image), not arbitrary graphics. The PFD therefore maps to:
+
+- **Text containers** for the numeric readouts — `GS`, `GPS ALT`, the track-tape
+  string, and the top callout. Cheap and updated without flicker.
+- **One image container** for the centre diversion plan (arcs, ownship,
+  alternates), rendered off-screen to a 4-bit-green bitmap and pushed via
+  `updateImageRawData`. Image containers are ≤ 288 × 144, so the plan occupies
+  the centre while text frames it.
+
+This image path is **BLE-bandwidth limited** (a few FPS) — fine for a
+slow-changing cruise/diversion picture, but it is why a live raster *moving map*
+is out of scope. The image-container wiring is the current productionization
+step; the simulator already renders the exact target design.
 
 ## On-device deployment (roadmap)
 
-The on-device path (`index.html` + `src/main.ts`) is implemented and
-type-checked against the real SDK, but running it requires the Even iPhone app,
-a paired G2, and a Garmin GLO — it cannot be exercised in this repo's CI. Packaging
-and submission to Even Hub (app icon, manifest, `even-publisher`) is a follow-up.
+Running on hardware requires the Even iPhone app, a paired G2, and a Garmin GLO,
+so it can't be exercised in this repo's CI. Remaining device work: the PFD
+image-container push, app icon + manifest, and submission via `even-publisher`.
 
 ## Roadmap
 
-- Pilot-entered / imported route (SimBrief or filed plan), persisted via the SDK's
-  local storage.
-- Top-of-Descent and destination ETA refinements; wind estimate from GS/track history.
-- Nearest-airport page; cross-track CDI needle.
+- PFD image-container rendering on hardware (centre plan) + BLE update tuning.
+- Live weather for alternate suitability (METAR/TAF, e.g. over Starlink).
+- Selectable plan range; declutter rules for closely-spaced fields.
+- Pilot-entered / imported route (SimBrief or filed plan), persisted via SDK storage.
+- Wind estimate from GS/track history; Top-of-Descent cue.
 - IMU "look-down" declutter (dim the HUD when the pilot looks at the panel).
-- Larger primary digits via image containers (works around the fixed font).
-- Optional Mapbox static-map thumbnail (track-up), updated slowly.
 
 ## Notes on the demo data
 
