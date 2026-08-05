@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Even G2 Aviation HUD — Simulator</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --green: #4dff7a;
+        --dim: #6b8f77;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0b0f0c;
+        color: #cfe9d6;
+        font-family: "DejaVu Sans Mono", Menlo, monospace;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        padding: 24px 16px 40px;
+      }
+      h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.08em; color: var(--dim); margin: 0; text-transform: uppercase; }
+      .glasses {
+        padding: 22px;
+        border-radius: 22px;
+        background: radial-gradient(circle at 50% 30%, #12211a, #05100b 70%);
+        box-shadow: 0 0 0 2px #1c2f25, 0 24px 60px rgba(0,0,0,0.6);
+      }
+      canvas {
+        display: block;
+        border-radius: 10px;
+        image-rendering: auto;
+        background: #020d06;
+      }
+      .caption { font-size: 12px; color: var(--dim); }
+      .panel {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 6px 18px;
+        font-size: 13px;
+        max-width: 560px;
+        width: 100%;
+        border-top: 1px solid #1c2f25;
+        padding-top: 16px;
+      }
+      .panel kbd {
+        background: #16241c;
+        border: 1px solid #26473600;
+        border-radius: 5px;
+        padding: 2px 7px;
+        color: var(--green);
+        font-family: inherit;
+      }
+      .panel .k { color: var(--green); white-space: nowrap; }
+      .disclaimer {
+        max-width: 560px; font-size: 11px; line-height: 1.5; color: #7d6b4a;
+        border: 1px solid #3a2f18; border-radius: 8px; padding: 10px 12px; background: #14100a;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Even G2 · Aviation HUD Simulator</h1>
+    <div class="glasses"><canvas id="hud"></canvas></div>
+    <div class="caption">576 × 288 · monochrome green · flying the demo route <strong id="route"></strong></div>
+
+    <div class="panel">
+      <span class="k"><kbd>↓</kbd> / <kbd>↑</kbd></span><span>Swipe down / up — change page (CRUISE · ROUTE · SETTINGS)</span>
+      <span class="k"><kbd>Enter</kbd> / <kbd>Space</kbd></span><span>Press — CRUISE: skip to next waypoint · SETTINGS: toggle auto-sequence</span>
+      <span class="k"><kbd>D</kbd></span><span>Double-press — toggle UTC / local clock</span>
+      <span class="k"><kbd>[</kbd> / <kbd>]</kbd></span><span>Slow down / speed up the simulated flight</span>
+    </div>
+
+    <div class="disclaimer">
+      <strong>Experimental / supplemental only.</strong> This is a personal situational-awareness
+      aid, not a certified instrument and not part of any aircraft. It shows GPS-derived data
+      (geometric GPS altitude is <em>not</em> pressure altitude / flight level). Never use it as a
+      primary reference, in critical phases of flight, or contrary to operator policy or regulations.
+    </div>
+
+    <script type="module" src="./sim.ts"></script>
+  </body>
+</html>

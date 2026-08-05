@@ -1,0 +1,27 @@
+{
+  "name": "even-g2-aviation-hud",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Supplemental heads-up situational-awareness display for Even Realities G2 smart glasses, targeted at airline cruise (A320). GPS positioning via Garmin GLO. Not a certified instrument.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@evenrealities/even_hub_sdk": "^0.0.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^3.0.2"
+  },
+  "engines": {
+    "node": "^20.0.0 || >=22.0.0"
+  }
+}
