@@ -22,23 +22,47 @@ import type {
   DeviceState,
 } from './bridge.js';
 
+/** Reserved id for the invisible full-screen touch-capture layer. */
+const CAPTURE_ID = 12;
+
 export class EvenSdkBridge implements GlassesBridge {
   constructor(private readonly bridge: EvenAppBridge) {}
 
   async createPage(containers: HudContainer[]): Promise<void> {
+    const textObject = this.withCapture(containers);
     const page = new CreateStartUpPageContainer({
-      containerTotalNum: containers.length,
-      textObject: containers.map(toTextContainer),
+      containerTotalNum: textObject.length,
+      textObject,
     });
     await this.bridge.createStartUpPageContainer(page);
   }
 
   async rebuildPage(containers: HudContainer[]): Promise<void> {
+    const textObject = this.withCapture(containers);
     const page = new RebuildPageContainer({
-      containerTotalNum: containers.length,
-      textObject: containers.map(toTextContainer),
+      containerTotalNum: textObject.length,
+      textObject,
     });
     await this.bridge.rebuildPageContainer(page);
+  }
+
+  /**
+   * The firmware/simulator only routes touchpad input to the app when a page
+   * has an event-capturing container, so every page carries one invisible
+   * full-screen capture layer (drawn first, so it sits behind the readouts).
+   */
+  private withCapture(containers: HudContainer[]): TextContainerProperty[] {
+    const capture = new TextContainerProperty({
+      containerID: CAPTURE_ID,
+      xPosition: 0,
+      yPosition: 0,
+      width: 576,
+      height: 288,
+      borderWidth: 0,
+      isEventCapture: 1,
+      content: '',
+    });
+    return [capture, ...containers.map(toTextContainer)];
   }
 
   async updateText(id: number, text: string): Promise<void> {

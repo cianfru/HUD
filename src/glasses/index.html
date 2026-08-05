@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>G2 Aviation HUD — Glasses build</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #06100b; color: #6b8f77;
+        font-family: ui-monospace, Menlo, monospace; }
+      .wrap { height: 100%; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 10px; text-align: center; padding: 20px; }
+      h1 { font-size: 14px; letter-spacing: .1em; color: #9fe6bd; margin: 0; text-transform: uppercase; }
+      p { font-size: 12px; max-width: 34em; line-height: 1.5; margin: 0; }
+      code { color: #37f39a; }
+    </style>
+  </head>
+  <body>
+    <!--
+      This page is loaded by the Even Hub simulator (or the Even iPhone app).
+      The HUD is drawn on the GLASSES display via the SDK, not in this webview.
+      This panel is just a status line for the webview screenshot.
+    -->
+    <div class="wrap">
+      <h1>G2 Aviation HUD · glasses build</h1>
+      <p id="status">initialising…</p>
+      <p>The HUD renders on the emulated glasses display. Touchpad: <code>Up/Down</code>
+        change page, <code>Click</code> = action, <code>Double-click</code> = clock.</p>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

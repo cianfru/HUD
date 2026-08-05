@@ -11,6 +11,9 @@
     "dev:mobile": "vite --config vite.mobile.config.ts",
     "build:mobile": "tsc --noEmit && vite build --config vite.mobile.config.ts",
     "preview:mobile": "vite preview --config vite.mobile.config.ts --port 5174",
+    "dev:glasses": "vite --config vite.glasses.config.ts",
+    "build:glasses": "tsc --noEmit && vite build --config vite.glasses.config.ts",
+    "preview:glasses": "vite preview --config vite.glasses.config.ts --port 5175",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
