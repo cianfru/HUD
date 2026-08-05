@@ -140,8 +140,37 @@ image), not arbitrary graphics. The PFD therefore maps to:
 
 This image path is **BLE-bandwidth limited** (a few FPS) — fine for a
 slow-changing cruise/diversion picture, but it is why a live raster *moving map*
-is out of scope. The image-container wiring is the current productionization
-step; the simulator already renders the exact target design.
+is out of scope.
+
+## Device-honest preview (`H` / `B` / `M`)
+
+The default simulator view is *idealised* (2× smoothed, glowing). Press **`H`** to
+switch to a **device-honest** render — native 576×288, quantised to 16 green
+levels, no glow — and **`B`** to composite it **additively over a bright daytime
+scene**, emulating the see-through display (black = transparent; only lit green
+adds light). This is the real test the doc's P0 gate asks for.
+
+The lesson is stark. The full PFD, over a bright sky, largely washes out —
+faint arcs and small labels disappear, and only bold marks over the dark
+glareshield stay legible:
+
+![Full PFD, device-honest over sky](docs/screenshots/device-full-over-sky.png)
+
+Press **`M`** for the **minimal** design — one salient answer, mostly black.
+It stays out of the forward view and puts the persistent readouts low, over the
+dark cockpit, where they hold contrast:
+
+![Minimal, device-honest over sky](docs/screenshots/device-minimal-over-sky.png)
+
+Design rules this preview forces:
+
+- **Mostly black.** Every lit pixel is light thrown into the pilot's eyes — spend them sparingly.
+- **Bold, few levels.** Thin 1-px lines and faint greys vanish; the 16-level ramp is coarse.
+- **Place persistent info low**, over the dark glareshield, not high over the sky.
+- **No smooth motion.** A few FPS over BLE — marks step, they don't glide.
+
+The minimal variant is the direction; the full PFD remains as a richer option
+for a brighter/darker phase or a higher-fidelity display adapter (iPad, Vision Pro).
 
 ## On-device deployment (roadmap)
 

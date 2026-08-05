@@ -82,6 +82,82 @@ export function drawPfd(
   ctx.shadowBlur = 0;
 }
 
+/**
+ * Decluttered "context engine" variant: mostly black, one salient answer.
+ * A single top line (best alternate + bearing/distance/ETE), a compressed
+ * track-up cluster (ownship + a few forward fields, no range arcs), and tiny
+ * corner readouts. Designed to add as few lit pixels to the forward view as
+ * possible while still answering "where would I go right now?".
+ */
+export function drawPfdMinimal(
+  ctx: CanvasRenderingContext2D,
+  s: PfdState,
+  pal: Palette = NIGHT,
+): void {
+  ctx.clearRect(0, 0, PFD_W, PFD_H);
+  ctx.fillStyle = '#010603';
+  ctx.fillRect(0, 0, PFD_W, PFD_H);
+  ctx.shadowColor = pal.mid;
+  ctx.shadowBlur = pal.glow;
+
+  const cx = PFD_W / 2;
+  const oy = 250;
+
+  const best = s.alternates.find((a) => a.best);
+  if (best) {
+    const line =
+      `◈ ${best.waypoint.ident}   ${formatDeg(best.bearingDeg)}°   ` +
+      `${best.distanceNm.toFixed(0)} NM   WX ✓   ${formatDuration(best.eteSec)}`;
+    text(ctx, line, cx, 22, 14, pal.bright, 'center', 700);
+  } else {
+    text(ctx, 'NO SUITABLE ALTERNATE IN RANGE', cx, 22, 12, pal.dim, 'center', 700);
+  }
+
+  // Compressed track-up cluster — no arcs, just relative geometry.
+  const plotted = s.alternates.filter((a) => Math.abs(a.relBearingDeg) <= 95).slice(0, 4);
+  const maxNm = Math.max(120, best ? best.distanceNm : 0, ...plotted.map((a) => a.distanceNm)) * 1.1;
+  const planR = 150;
+
+  ctx.strokeStyle = pal.ghost;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, oy - 12);
+  ctx.lineTo(cx, 46);
+  ctx.stroke();
+
+  for (const a of [...plotted].sort((p, q) => q.distanceNm - p.distanceNm)) {
+    const r = Math.min(planR, (a.distanceNm / maxNm) * planR);
+    const ang = (a.relBearingDeg * Math.PI) / 180;
+    const x = cx + Math.sin(ang) * r;
+    const y = oy - Math.cos(ang) * r;
+    if (y < 44) continue;
+    if (a.best) {
+      diamond(ctx, x, y, 6, pal.bright, true);
+      text(ctx, a.waypoint.ident, x, y - 14, 12, pal.bright, 'center', 700);
+    } else {
+      ring(ctx, x, y, 4, pal.dim, a.suitable);
+    }
+  }
+
+  // Ownship chevron.
+  ctx.fillStyle = pal.bright;
+  ctx.beginPath();
+  ctx.moveTo(cx, oy - 8);
+  ctx.lineTo(cx + 6, oy + 6);
+  ctx.lineTo(cx, oy + 2);
+  ctx.lineTo(cx - 6, oy + 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Tiny corner readouts.
+  text(ctx, `GS ${s.gsKt != null ? Math.round(s.gsKt) : '---'}`, 14, 274, 12, pal.mid, 'left', 700);
+  const alt = s.altFt != null ? Math.round(s.altFt).toLocaleString('en-US') : '-----';
+  text(ctx, `${alt} FT`, PFD_W - 14, 274, 12, pal.mid, 'right', 700);
+  text(ctx, formatDeg(s.trackDeg), cx, 274, 12, pal.mid, 'center', 700);
+
+  ctx.shadowBlur = 0;
+}
+
 // --- top callout: mode/clock + best-divert salient line ------------------
 
 function drawTopCallout(ctx: CanvasRenderingContext2D, s: PfdState, pal: Palette): void {

@@ -66,13 +66,16 @@
     <h1>Even G2 · PFD Aviation HUD Simulator</h1>
     <div class="glasses"><canvas id="hud"></canvas></div>
     <div class="caption">
-      576 × 288 · monochrome green · PFD layout (GS left · GPS-ALT right · track tape bottom) ·
-      track-up diversion plan · route <strong id="route"></strong> · mode <strong id="mode">CRUISE</strong>
+      576 × 288 · monochrome green · route <strong id="route"></strong> ·
+      mode <strong id="mode">CRUISE</strong> · <strong id="status"></strong>
     </div>
 
     <div class="panel">
-      <span class="k"><kbd>N</kbd></span><span>Toggle night / day background (see-through readability)</span>
-      <span class="k"><kbd>T</kbd></span><span>Toggle CRUISE / DIVERT mode</span>
+      <span class="k"><kbd>H</kbd></span><span>Device-honest — native 576×288, 16 green levels, no glow (what the panel really shows)</span>
+      <span class="k"><kbd>B</kbd></span><span>Composite over a bright daytime sky (see-through legibility test — black = transparent)</span>
+      <span class="k"><kbd>M</kbd></span><span>Minimal design — one salient answer, mostly black</span>
+      <span class="k"><kbd>N</kbd></span><span>Night / day palette</span>
+      <span class="k"><kbd>T</kbd></span><span>CRUISE / DIVERT mode</span>
       <span class="k"><kbd>[</kbd> / <kbd>]</kbd></span><span>Slow down / speed up the simulated flight</span>
     </div>
 
