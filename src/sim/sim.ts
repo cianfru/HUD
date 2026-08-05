@@ -19,6 +19,8 @@ import { drawPfd, drawPfdMinimal, NIGHT, DAY, PFD_W, PFD_H } from '../hud/pfd.js
 import type { PfdState } from '../hud/pfd.js';
 import { drawTargetView, pickCandidate } from '../hud/target.js';
 import type { TargetViewState, LockedTarget } from '../hud/target.js';
+import { coordinatedBankDeg } from '../core/attitude.js';
+import type { Attitude } from '../core/attitude.js';
 import { quantizeToDeviceGreen } from '../hud/device.js';
 import { MPS_TO_KNOTS, METERS_TO_FEET } from '../core/units.js';
 import { formatUtcClock } from '../core/time.js';
@@ -66,12 +68,45 @@ let sky = false;
 let view: View = 'TARGET';
 let mode: PfdState['mode'] = 'CRUISE';
 let headOffsetDeg = 0; // where the head is looking, relative to track
+let headRollDeg = 0; // head tilt relative to the airframe
+let attitudeOn = true;
 let lockedIdent: string | null = null;
+
+const START = performance.now();
+let prevTrack: number | null = null;
+let prevTrackT = START;
 
 source.start((f) => {
   fix = f;
   plan.autoSequence(f);
 });
+
+/**
+ * Simulated aircraft attitude, standing in for the mounted-phone AHRS: a gentle
+ * demo roll/pitch oscillation plus the coordinated-turn bank implied by the
+ * current GPS turn rate.
+ */
+function simAttitude(): Attitude {
+  const t = (performance.now() - START) / 1000;
+  let turnBank = 0;
+  const track = fix?.trackDeg ?? null;
+  const gsKt = fix?.speedMps != null ? fix.speedMps * MPS_TO_KNOTS : 0;
+  if (track != null && prevTrack != null) {
+    const dt = (performance.now() - prevTrackT) / 1000;
+    if (dt > 0.05) {
+      let d = track - prevTrack;
+      if (d > 180) d -= 360;
+      if (d < -180) d += 360;
+      turnBank = coordinatedBankDeg(gsKt, d / dt);
+    }
+  }
+  prevTrack = track;
+  prevTrackT = performance.now();
+  return {
+    rollDeg: 11 * Math.sin(t * 0.1) + Math.max(-25, Math.min(25, turnBank)),
+    pitchDeg: 2.2 * Math.sin(t * 0.14),
+  };
+}
 
 function alternates(): Alternate[] {
   const gsKt = fix?.speedMps != null ? fix.speedMps * MPS_TO_KNOTS : null;
@@ -120,6 +155,8 @@ function targetState(): TargetViewState {
     trackDeg: fix?.trackDeg ?? null,
     headOffsetDeg,
     locked: lockedTarget(alts),
+    attitude: attitudeOn ? simAttitude() : null,
+    headRollDeg,
   };
 }
 
@@ -216,6 +253,18 @@ window.addEventListener('keydown', (e) => {
       break;
     case 'ArrowRight':
       headOffsetDeg = Math.min(180, headOffsetDeg + 5);
+      break;
+    case 'q':
+    case 'Q':
+      headRollDeg = Math.max(-30, headRollDeg - 3); // tilt head left
+      break;
+    case 'e':
+    case 'E':
+      headRollDeg = Math.min(30, headRollDeg + 3); // tilt head right
+      break;
+    case 'a':
+    case 'A':
+      attitudeOn = !attitudeOn;
       break;
     case 'v':
     case 'V':

@@ -59,6 +59,42 @@ Try it: `npm run dev`, then move the mouse (= your head), `Enter`/`Space` to loc
 
 ---
 
+## Aircraft attitude from the mounted phone (optional)
+
+The iPhone is mounted on the airframe, so **its IMU is an aircraft attitude
+source** — a portable-AHRS, like a Sentry/Levil. That gives *two* gyros: the
+**phone → aircraft attitude** and the **glasses → head orientation**. Their
+difference is head-relative-to-airframe, which is what makes an approximately
+**conformal horizon** possible: it stays pinned to the real world as you bank and
+as you tilt your head. Press `A` for the horizon + pitch ladder, `Q`/`E` to tilt
+your head and watch it counter-rotate.
+
+<p align="center">
+  <img src="docs/screenshots/attitude-horizon.png" width="49%" alt="Horizon + pitch ladder from phone AHRS" />
+  <img src="docs/screenshots/attitude-headroll.png" width="49%" alt="Head tilted — horizon counter-rotates (conformal)" />
+</p>
+
+Honest caveats (the horizon here is *simulated* attitude standing in for the phone):
+
+- **Coordinated-turn error.** An accelerometer can't separate gravity from
+  acceleration, so a naïve phone-AHRS re-levels to the false vertical in a
+  sustained turn. The fix is **GPS-aided correction** (subtract the centripetal
+  term using the GLO's turn rate) — `coordinatedBankDeg()` in `core/attitude.ts`
+  is that geometry. Imperfect in turbulence / unusual attitudes.
+- **Mounting alignment.** The cradle sits at an arbitrary angle, so it needs a
+  one-time **"straight-and-level, tap to zero"** leveling to learn the
+  phone→airframe offset.
+- **Heading is the weak axis.** Gyro yaw drifts and the cockpit magnetometer is
+  unreliable; pitch/roll are solid, heading comes from GPS ground track.
+- **Gating unknown.** Whether the Even WebView can read the phone's motion
+  sensors (SDK phone-attitude API, or browser `DeviceMotion` with iOS
+  permission) must be verified on hardware before relying on this.
+
+Nothing here is an attitude *instrument* — it is an advisory reference for the
+study-aid framing; the aircraft's ADIRS is always the reference.
+
+---
+
 ## The platform, in one paragraph
 
 A G2 "app" is a **web app** loaded into a WebView on the paired iPhone; the

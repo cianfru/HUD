@@ -18,6 +18,12 @@ import { formatDuration } from '../core/time.js';
 import { text, diamond, ring, NIGHT } from './draw.js';
 import type { Palette } from './draw.js';
 import type { Alternate } from '../core/diversion.js';
+import { horizonRollDeg } from '../core/attitude.js';
+import type { Attitude } from '../core/attitude.js';
+
+/** Pitch ladder scale, display pixels per degree. */
+const PITCH_PPD = 3.6;
+const deg2rad = (d: number): number => (d * Math.PI) / 180;
 
 const W = 576;
 const H = 288;
@@ -47,6 +53,10 @@ export interface TargetViewState {
   /** Head azimuth relative to ground track, degrees (+ = looking right). */
   headOffsetDeg: number;
   locked: LockedTarget | null;
+  /** Aircraft attitude from the mounted-phone AHRS. Omit to hide the horizon. */
+  attitude?: Attitude | null;
+  /** Head roll relative to the airframe, degrees (+ = head tilted right). */
+  headRollDeg?: number;
 }
 
 /** The field under the reticle (nearest in azimuth within CAPTURE_DEG), or null. */
@@ -80,42 +90,103 @@ export function drawTargetView(
 
   drawAzimuthTape(ctx, s, pal);
 
-  // Horizon reference the targets sit on.
-  ctx.strokeStyle = pal.ghost;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, RETICLE_Y);
-  ctx.lineTo(W, RETICLE_Y);
-  ctx.stroke();
-
   const candidate = pickCandidate(s.alternates, s.headOffsetDeg);
 
-  // On-screen targets, farthest first so the nearest/brightest win overlaps.
+  // World overlay (horizon + targets), transformed by aircraft attitude and
+  // counter-rotated by head roll so it stays pinned to the real world. The
+  // boresight is the origin; the reticle stays screen-fixed.
+  const att = s.attitude ?? null;
+  const rollDeg = att ? horizonRollDeg(att.rollDeg, s.headRollDeg ?? 0) : 0;
+  const pitchPx = att ? att.pitchDeg * PITCH_PPD : 0;
+
+  ctx.save();
+  ctx.translate(W / 2, RETICLE_Y);
+  ctx.rotate(deg2rad(rollDeg));
+  drawHorizon(ctx, pitchPx, !!att, pal);
+  drawMarkers(ctx, s, candidate, pitchPx, pal);
+  ctx.restore();
+
+  drawReticle(ctx, candidate, pal);
+  drawOffscreenCue(ctx, s, pal);
+  drawFooter(ctx, s, pal);
+  if (att) drawAttitudeReadout(ctx, att, s.headRollDeg ?? 0, pal);
+
+  if (s.locked) drawLockCard(ctx, s.locked, pal);
+
+  ctx.shadowBlur = 0;
+}
+
+/** Horizon line (+ pitch ladder when attitude is live), drawn in the boresight frame. */
+function drawHorizon(ctx: CanvasRenderingContext2D, pitchPx: number, full: boolean, pal: Palette): void {
+  const half = 340;
+  const gap = 26;
+  const y = pitchPx;
+  ctx.strokeStyle = full ? pal.dim : pal.ghost;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-half, y);
+  ctx.lineTo(-gap, y);
+  ctx.moveTo(gap, y);
+  ctx.lineTo(half, y);
+  ctx.stroke();
+  if (!full) return;
+
+  // A couple of pitch rungs above and below.
+  for (const d of [-10, -5, 5, 10]) {
+    const ry = y - d * PITCH_PPD; // +pitch (nose up) sits below horizon in view
+    const w = d % 10 === 0 ? 46 : 30;
+    ctx.strokeStyle = pal.faint;
+    ctx.beginPath();
+    ctx.moveTo(-w, ry);
+    ctx.lineTo(-gap, ry);
+    ctx.moveTo(gap, ry);
+    ctx.lineTo(w, ry);
+    ctx.stroke();
+    text(ctx, String(Math.abs(d)), -w - 12, ry, 8, pal.faint);
+    text(ctx, String(Math.abs(d)), w + 12, ry, 8, pal.faint);
+  }
+}
+
+/** Airport markers, drawn in the boresight frame so they ride the horizon. */
+function drawMarkers(
+  ctx: CanvasRenderingContext2D,
+  s: TargetViewState,
+  candidate: Alternate | null,
+  pitchPx: number,
+  pal: Palette,
+): void {
   const onScreen = s.alternates
     .map((a) => ({ a, off: angleDiffDeg(a.relBearingDeg, s.headOffsetDeg) }))
     .filter((t) => Math.abs(t.off) <= FOV_DEG / 2)
     .sort((p, q) => q.a.distanceNm - p.a.distanceNm);
 
   for (const { a, off } of onScreen) {
-    const x = W / 2 + off * PX_PER_DEG;
-    const isCand = candidate === a;
-    if (isCand) {
-      diamond(ctx, x, RETICLE_Y, 7, pal.bright, true);
-      text(ctx, a.waypoint.ident, x, RETICLE_Y - 18, 14, pal.bright, 'center', 700);
-      text(ctx, `${a.distanceNm.toFixed(0)} NM`, x, RETICLE_Y + 17, 11, pal.mid);
+    const x = off * PX_PER_DEG;
+    const y = pitchPx;
+    if (candidate === a) {
+      diamond(ctx, x, y, 7, pal.bright, true);
+      text(ctx, a.waypoint.ident, x, y - 18, 14, pal.bright, 'center', 700);
+      text(ctx, `${a.distanceNm.toFixed(0)} NM`, x, y + 17, 11, pal.mid);
     } else {
-      ring(ctx, x, RETICLE_Y, 5, pal.dim, a.suitable);
-      text(ctx, a.waypoint.ident, x, RETICLE_Y - 15, 11, pal.dim);
+      ring(ctx, x, y, 5, pal.dim, a.suitable);
+      text(ctx, a.waypoint.ident, x, y - 15, 11, pal.dim);
     }
   }
+}
 
-  drawReticle(ctx, candidate, pal);
-  drawOffscreenCue(ctx, s, pal);
-  drawFooter(ctx, s, pal);
-
-  if (s.locked) drawLockCard(ctx, s.locked, pal);
-
-  ctx.shadowBlur = 0;
+/** Small numeric bank/pitch readout (screen-fixed). */
+function drawAttitudeReadout(
+  ctx: CanvasRenderingContext2D,
+  att: Attitude,
+  headRollDeg: number,
+  pal: Palette,
+): void {
+  const bank = Math.round(att.rollDeg);
+  const pitch = Math.round(att.pitchDeg);
+  const bankStr = bank === 0 ? 'WINGS LVL' : `BANK ${Math.abs(bank)}°${bank > 0 ? 'R' : 'L'}`;
+  const pitchStr = `${Math.abs(pitch)}°${pitch >= 0 ? 'U' : 'D'}`;
+  const head = headRollDeg !== 0 ? `  HEAD ${Math.abs(Math.round(headRollDeg))}°${headRollDeg > 0 ? 'R' : 'L'}` : '';
+  text(ctx, `${bankStr}  PITCH ${pitchStr}${head}`, W / 2, 62, 11, pal.mid, 'center', 700);
 }
 
 // --- azimuth tape (where am I looking) -----------------------------------
