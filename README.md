@@ -95,13 +95,20 @@ study-aid framing; the aircraft's ADIRS is always the reference.
 
 ---
 
-## Test it on your iPhone — no glasses (`npm run dev:mobile`)
+## Test it on your iPhone — no glasses
+
+### ▶ Live: **https://g2-aviation-hud.vercel.app**
+
+Open that on your iPhone (**landscape**), tap **START**, and **Allow** Location +
+Motion. "Add to Home Screen" for a full-screen app. It ships **~4,970 real ICAO
+airports** and pulls **live METAR/TAF** (and **D-ATIS** for US fields) on demand.
 
 The phone already has the sensors that matter — GPS and the same IMU that would be
 the aircraft-attitude source — and it's a screen. So the whole HUD runs on the
 phone in the browser, fed by **real** `navigator.geolocation` + `DeviceOrientation`.
 This is the doc's "P1 — make it live" step: real data, real interaction, zero
-hardware. It ships with **4,973 real ICAO airports** so it works wherever you are.
+hardware. To run/host it yourself: `npm run dev:mobile` (local) or
+`npm run build:mobile` → deploy `dist-mobile/` + the `api/` functions to Vercel.
 
 <p align="center">
   <img src="docs/screenshots/mobile-target.png" width="49%" alt="Handheld target acquisition on a phone (real GPS)" />
