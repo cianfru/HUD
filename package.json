@@ -8,6 +8,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "dev:mobile": "vite --config vite.mobile.config.ts",
+    "build:mobile": "tsc --noEmit && vite build --config vite.mobile.config.ts",
+    "preview:mobile": "vite preview --config vite.mobile.config.ts --port 5174",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

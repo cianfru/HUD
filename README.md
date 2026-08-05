@@ -95,6 +95,55 @@ study-aid framing; the aircraft's ADIRS is always the reference.
 
 ---
 
+## Test it on your iPhone — no glasses (`npm run dev:mobile`)
+
+The phone already has the sensors that matter — GPS and the same IMU that would be
+the aircraft-attitude source — and it's a screen. So the whole HUD runs on the
+phone in the browser, fed by **real** `navigator.geolocation` + `DeviceOrientation`.
+This is the doc's "P1 — make it live" step: real data, real interaction, zero
+hardware. It ships with **4,973 real ICAO airports** so it works wherever you are.
+
+<p align="center">
+  <img src="docs/screenshots/mobile-target.png" width="49%" alt="Handheld target acquisition on a phone (real GPS)" />
+  <img src="docs/screenshots/mobile-pfd.png" width="49%" alt="PFD / diversion on a phone (real GPS)" />
+</p>
+
+- **HANDHELD** — hold the phone up and **pan it around**; nearby airports appear
+  at their real bearing; **tap the screen** to lock the field under the reticle.
+- **MOUNTED** — cradle it on the glareshield for the PFD / diversion / attitude
+  picture; `ZERO` levels the attitude reference.
+
+### Running it (the one catch is HTTPS)
+
+iOS only gives a web page GPS + motion over **HTTPS** (or `localhost`). Pick one:
+
+**A — host it (simplest, stable URL).** Build the static bundle and drop it on any
+HTTPS host (Vercel, Netlify, GitHub Pages):
+
+```bash
+npm install
+npm run build:mobile      # → dist-mobile/  (static; deploy this folder)
+```
+
+**B — laptop + a quick tunnel.** Serve locally and expose it over HTTPS:
+
+```bash
+npm run dev:mobile                              # serves on http://localhost:5174
+npx cloudflared tunnel --url http://localhost:5174   # prints an https URL
+# open that https URL on the iPhone
+```
+
+Then on the iPhone: open the URL, rotate to **landscape**, tap **START**, and
+**Allow** Location + Motion. "Add to Home Screen" gives a full-screen, chrome-less
+app. A window/dashboard seat helps the GPS (and the Garmin GLO, once you pair it,
+feeds this same GPS path).
+
+> The mobile MVP treats every nearby field as "suitable" (no live weather yet) and
+> has no runway/approach detail — it validates position, bearing, and the whole
+> interaction. Live METAR/TAF and the attitude fusion are the next steps.
+
+---
+
 ## The platform, in one paragraph
 
 A G2 "app" is a **web app** loaded into a WebView on the paired iPhone; the

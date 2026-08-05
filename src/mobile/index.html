@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#000000" />
+    <title>G2 HUD — Phone MVP</title>
+    <style>
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #37f39a; }
+      #hud { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+      .overlay { position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 20px; padding: 24px;
+        background: radial-gradient(circle at 50% 30%, #06140d, #000 75%); text-align: center; }
+      .overlay h1 { font-size: 17px; letter-spacing: .12em; margin: 0; color: #cfe9d6; text-transform: uppercase; }
+      .overlay p { font-size: 13px; line-height: 1.5; color: #6b8f77; max-width: 30em; margin: 0; }
+      .big { font-size: 20px; font-weight: 700; padding: 16px 34px; border-radius: 12px;
+        background: #37f39a; color: #04140b; border: 0; }
+      .disc { font-size: 11px; color: #7d6b4a; border: 1px solid #3a2f18; border-radius: 8px;
+        padding: 10px 12px; background: #14100a; max-width: 32em; line-height: 1.5; }
+      .hidden { display: none !important; }
+
+      /* On-screen controls while running */
+      .bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px;
+        padding: 10px calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+        justify-content: center; flex-wrap: wrap; z-index: 5; }
+      .bar button { font-family: inherit; font-size: 12px; font-weight: 700; color: #9fe6bd;
+        background: rgba(6,20,13,.72); border: 1px solid #1f6a46; border-radius: 9px; padding: 10px 12px; }
+      .bar button.on { background: #37f39a; color: #04140b; }
+      .hint { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 0; right: 0;
+        text-align: center; font-size: 11px; color: #6b8f77; z-index: 5; pointer-events: none; }
+      .err { position: fixed; top: 40%; left: 12px; right: 12px; text-align: center;
+        color: #ffb454; font-size: 13px; z-index: 6; }
+    </style>
+  </head>
+  <body>
+    <canvas id="hud"></canvas>
+
+    <div class="hint hidden" id="hint"></div>
+    <div class="err hidden" id="err"></div>
+
+    <div class="bar hidden" id="bar">
+      <button id="btnMode">HANDHELD</button>
+      <button id="btnView">TARGET</button>
+      <button id="btnZero">ZERO</button>
+      <button id="btnNight">NIGHT</button>
+    </div>
+
+    <div class="overlay" id="start">
+      <h1>G2 HUD · Phone MVP</h1>
+      <p>Uses your phone's <strong>GPS</strong> and <strong>compass / motion</strong> to run the
+      real HUD — no glasses. In <strong>Handheld</strong> mode, hold the phone up and pan it around:
+      nearby airports appear where they actually are. <strong>Tap the screen</strong> to lock the
+      one under the reticle. Best in <strong>landscape</strong>.</p>
+      <button class="big" id="startBtn">START</button>
+      <p id="startNote">You'll be asked to allow Location and Motion access.</p>
+      <div class="disc"><strong>Experimental / supplemental only.</strong> Not a certified instrument,
+        not for operational use. GPS altitude is geometric (not flight level). Compass/motion from a
+        phone are approximate.</div>
+    </div>
+
+    <script type="module" src="./mobile.ts"></script>
+  </body>
+</html>
