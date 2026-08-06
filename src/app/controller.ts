@@ -11,16 +11,33 @@
 import type { GlassesBridge, Gesture, DeviceState } from '../bridge/bridge.js';
 import type { PositionSource } from '../data/position/source.js';
 import { FlightPlan } from '../core/flightplan.js';
+import { computeAlternates } from '../core/diversion.js';
+import { mpsToKnots } from '../core/units.js';
 import type { Position } from '../core/types.js';
+import type { BriefingStore } from '../data/briefing.js';
+import type { Minima } from '../core/taf.js';
 import { HudRenderer } from '../hud/renderer.js';
 import { VIEW_ORDER } from '../hud/model.js';
 import type { HudView, HudState, HudConfig } from '../hud/model.js';
+
+export interface DiversionOptions {
+  maxRangeNm?: number;
+  limit?: number;
+  minRwyM?: number;
+  minima?: Minima;
+}
 
 export interface ControllerOptions {
   config?: Partial<HudConfig>;
   /** Clock/derived-field refresh interval, ms. */
   tickMs?: number;
   now?: () => number;
+  /**
+   * Offline briefing pack. When present, the DIVERT page ranks its
+   * A320-capable fields by cached-TAF suitability (at `now`) then proximity.
+   */
+  briefing?: BriefingStore;
+  diversion?: DiversionOptions;
 }
 
 export class HudController {
@@ -32,6 +49,8 @@ export class HudController {
   private readonly tickMs: number;
   private readonly now: () => number;
   private readonly flightStartMs: number;
+  private readonly briefing?: BriefingStore;
+  private readonly diversion: DiversionOptions;
 
   private ticker: ReturnType<typeof setInterval> | null = null;
   private unsubscribers: Array<() => void> = [];
@@ -47,6 +66,8 @@ export class HudController {
     this.tickMs = opts.tickMs ?? 1000;
     this.now = opts.now ?? (() => Date.now());
     this.flightStartMs = this.now();
+    this.briefing = opts.briefing;
+    this.diversion = opts.diversion ?? {};
   }
 
   start(): void {
@@ -122,6 +143,7 @@ export class HudController {
   private snapshot(): HudState {
     const now = new Date(this.now());
     const guidance = this.position ? this.plan.guidance(this.position) : null;
+    const { alternates, briefingAgeSec } = this.computeDiversion(now);
     return {
       now,
       position: this.position,
@@ -130,6 +152,36 @@ export class HudController {
       device: this.device,
       config: this.config,
       flightStartMs: this.flightStartMs,
+      alternates,
+      briefingAgeSec,
     };
+  }
+
+  /**
+   * Rank the briefing pack's A320-capable fields for the DIVERT page, entirely
+   * offline: candidacy + go/no-go from the cached TAF at `at`, geometry from the
+   * current fix. Null alternates when no pack is loaded or no fix yet.
+   */
+  private computeDiversion(at: Date): {
+    alternates: HudState['alternates'];
+    briefingAgeSec: HudState['briefingAgeSec'];
+  } {
+    if (!this.briefing) return { alternates: null, briefingAgeSec: null };
+    const briefingAgeSec = this.briefing.ageSec;
+    if (!this.position) return { alternates: null, briefingAgeSec };
+    const candidates = this.briefing.candidatesAt(
+      at,
+      this.diversion.minRwyM,
+      this.diversion.minima,
+    );
+    const gsKt = this.position.speedMps != null ? mpsToKnots(this.position.speedMps) : null;
+    const alternates = computeAlternates(
+      this.position,
+      this.position.trackDeg ?? null,
+      gsKt,
+      candidates,
+      { maxRangeNm: this.diversion.maxRangeNm ?? 1000, limit: this.diversion.limit ?? 6 },
+    );
+    return { alternates, briefingAgeSec };
   }
 }

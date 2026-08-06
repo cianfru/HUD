@@ -11,8 +11,9 @@
  *   npm run dev:glasses            # serves http://localhost:5175
  *   npx @evenrealities/evenhub-simulator http://localhost:5175
  *
- * Touchpad: Up/Down cycle pages (CRUISE · ROUTE · SETTINGS), Click = context
- * action, Double-click = toggle UTC/local clock.
+ * Touchpad: Up/Down cycle pages (CRUISE · DIVERT · ROUTE · SETTINGS), Click =
+ * context action, Double-click = toggle UTC/local clock. DIVERT is the offline
+ * diversion picture, ranked from the pre-flight briefing pack (no network).
  */
 import { waitForEvenAppBridge } from '@evenrealities/even_hub_sdk';
 import { EvenSdkBridge } from '../bridge/even-sdk.js';
@@ -21,6 +22,8 @@ import { HudController } from '../app/controller.js';
 import { FlightPlan } from '../core/flightplan.js';
 import { parseRoute } from '../data/route-parser.js';
 import { DEMO_ROUTE_STRING } from '../data/navdata.js';
+import { BriefingStore } from '../data/briefing.js';
+import { DEMO_BRIEFING } from '../data/briefing-demo.js';
 
 function status(msg: string): void {
   const el = document.getElementById('status');
@@ -42,7 +45,20 @@ async function boot(): Promise<void> {
     wanderNm: 0.6,
   });
 
-  const controller = new HudController(bridge, source, new FlightPlan(waypoints), { tickMs: 1000 });
+  // Offline: the whole diversion picture comes from a pack downloaded on the
+  // ground, never the network. The demo pack's TAFs are frozen, so run the
+  // controller clock forward from the briefed time to keep suitability inside
+  // the forecast window.
+  const briefing = new BriefingStore(DEMO_BRIEFING);
+  const briefedBase = new Date(DEMO_BRIEFING.createdAt).getTime() + 20 * 60_000;
+  const bootReal = Date.now();
+
+  const controller = new HudController(bridge, source, new FlightPlan(waypoints), {
+    tickMs: 1000,
+    now: () => briefedBase + (Date.now() - bootReal),
+    briefing,
+    diversion: { maxRangeNm: 1000, limit: 6 },
+  });
   controller.start();
   status('running — HUD rendered on the glasses display');
 }

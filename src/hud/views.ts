@@ -26,6 +26,8 @@ export function buildView(view: HudView, s: HudState): HudContainer[] {
   switch (view) {
     case 'CRUISE':
       return buildCruise(s);
+    case 'DIVERT':
+      return buildDivert(s);
     case 'ROUTE':
       return buildRoute(s);
     case 'SETTINGS':
@@ -69,6 +71,78 @@ function buildCruise(s: HudState): HudContainer[] {
     { id: 7, x: MARGIN, y: 168, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: wpt },
     { id: 8, x: MARGIN, y: 228, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: dest },
   ];
+}
+
+// --- DIVERT: offline diversion picture from the briefing pack -------------
+//
+// The reason this product exists without connectivity: every A320-capable
+// field in the pre-flight pack, ranked suitable-then-nearest, each judged from
+// its cached TAF at the current time. Track-relative bearing so it reads
+// track-up like the alternates on a nav display.
+
+function buildDivert(s: HudState): HudContainer[] {
+  const W = SCREEN_W - 2 * MARGIN;
+
+  // No pack, or a pack but no fix yet — say which, don't show a blank page.
+  if (s.alternates === null) {
+    const msg =
+      s.briefingAgeSec === null ? 'NO BRIEFING PACK LOADED' : 'DIVERT   waiting for GPS fix';
+    return [{ id: 1, x: MARGIN, y: 10, w: W, h: ROW_H, text: msg }];
+  }
+
+  const header = `DIVERT   ${s.alternates.length} A320 FIELDS   PACK ${formatAge(s.briefingAgeSec)}`;
+  const containers: HudContainer[] = [
+    { id: 1, x: MARGIN, y: 8, w: W, h: ROW_H, text: header },
+  ];
+
+  if (s.alternates.length === 0) {
+    containers.push({
+      id: 2,
+      x: MARGIN,
+      y: 44,
+      w: W,
+      h: ROW_H,
+      text: 'no suitable A320 field in range',
+    });
+    return containers;
+  }
+
+  // Up to 6 rows keeps us within the 8-text-container firmware limit (1 header).
+  let row = 0;
+  for (const a of s.alternates.slice(0, 6)) {
+    const marker = a.best ? '*' : ' ';
+    const rel = formatRelBrg(a.relBearingDeg);
+    const dist = `${formatNm(a.distanceNm)}NM`;
+    const ete = a.eteSec != null ? formatDuration(a.eteSec) : '--:--';
+    const go = a.suitable ? 'GO' : 'WX'; // WX = ruled out on weather (ASCII; no glyph font)
+    containers.push({
+      id: 2 + row,
+      x: MARGIN,
+      y: 44 + row * ROW_H,
+      w: W,
+      h: ROW_H,
+      text: `${marker}${a.waypoint.ident.padEnd(4)} ${rel} ${dist.padStart(6)} ${ete} ${go}`,
+    });
+    row++;
+  }
+  return containers;
+}
+
+/** Track-relative bearing as e.g. "L045" / "R120" / "AHD ". + relBearing = right. */
+function formatRelBrg(rel: number): string {
+  const r = Math.round(rel);
+  if (Math.abs(r) < 3) return 'AHD ';
+  const side = r > 0 ? 'R' : 'L';
+  return side + String(Math.abs(r)).padStart(3, '0');
+}
+
+/** Pack age: "12m" under an hour, else "2h05". */
+function formatAge(sec: number | null): string {
+  if (sec == null) return '--';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  return `${h}h${String(min % 60).padStart(2, '0')}`;
 }
 
 // --- ROUTE: scrolling-free list of the flight plan -----------------------
@@ -123,8 +197,8 @@ function buildSettings(s: HudState): HudContainer[] {
     'SETTINGS',
     `Clock:     ${s.config.clock.toUpperCase()}   (double-press to toggle)`,
     `Auto-seq:  ${s.config.autoSequence ? 'ON' : 'OFF'}   (press to toggle)`,
-    'Swipe up/down: change page',
-    'Press on CRUISE: skip to next waypoint',
+    'Swipe: CRUISE - DIVERT - ROUTE - SETTINGS',
+    'DIVERT: offline alternates from the briefing pack',
   ];
   return lines.map((text, i) => ({
     id: 1 + i,
