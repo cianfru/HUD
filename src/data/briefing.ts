@@ -12,6 +12,7 @@ import { parseTaf, assessTaf } from '../core/taf.js';
 import type { Assessment, Minima } from '../core/taf.js';
 import { distanceNm, initialBearingDeg } from '../core/geo.js';
 import type { LatLon, Waypoint } from '../core/types.js';
+import type { AlternateCandidate } from '../core/diversion.js';
 
 export interface BriefingAirport {
   ident: string;
@@ -106,6 +107,24 @@ export class BriefingStore {
       if (d <= maxNm) out.push({ airport: a, distanceNm: d, bearingDeg: initialBearingDeg(pos, a) });
     }
     out.sort((x, y) => x.distanceNm - y.distanceNm);
+    return out;
+  }
+
+  /**
+   * Diversion candidates for `computeAlternates`: every A320-capable field in
+   * the pack, each tagged with go/no-go from its cached TAF evaluated at `at`.
+   * A field with no usable TAF is treated as not suitable (unknown ≠ good).
+   * This is the offline seam between the briefing pack and the diversion module.
+   */
+  candidatesAt(at: Date, minRwyM = A320_MIN_RWY_M, minima?: Minima): AlternateCandidate[] {
+    const out: AlternateCandidate[] = [];
+    for (const a of this.airports.values()) {
+      if (!this.a320Capable(a.ident, minRwyM)) continue;
+      const wp = this.asWaypoint(a.ident);
+      if (!wp) continue;
+      const assessment = this.assess(a.ident, at, minima);
+      out.push({ waypoint: wp, suitable: assessment?.suitable ?? false });
+    }
     return out;
   }
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BriefingStore } from '../src/data/briefing.js';
 import type { BriefingPack } from '../src/data/briefing.js';
+import { computeAlternates } from '../src/core/diversion.js';
 
 // Pack captured on the ground; TAF day tokens resolve against createdAt.
 const CREATED = '2026-08-05T17:00:00.000Z';
@@ -87,5 +88,23 @@ describe('BriefingStore — nearby', () => {
   it('excludes fields beyond maxNm', () => {
     const near = store.nearby({ lat: 25.2528, lon: 55.3644 }, 100);
     expect(near.map((n) => n.airport.ident)).toEqual(['OMDB']);
+  });
+});
+
+describe('BriefingStore — offline diversion candidates', () => {
+  const store = new BriefingStore(pack);
+
+  it('feeds computeAlternates with TAF-driven suitability', () => {
+    // At 06:08Z Dubai has gone IFR (still suitable); Muscat is VFR.
+    const cands = store.candidatesAt(at(6, 8));
+    // Only A320-capable fields with a TAF -> OMDB and OOMS (OKBK too short, OERK no rwy).
+    expect(cands.map((c) => c.waypoint.ident).sort()).toEqual(['OMDB', 'OOMS']);
+    expect(cands.every((c) => c.suitable)).toBe(true);
+
+    const alts = computeAlternates({ lat: 25.2528, lon: 55.3644 }, 90, 450, cands, {
+      maxRangeNm: 1000,
+    });
+    expect(alts[0]!.waypoint.ident).toBe('OMDB'); // nearest suitable
+    expect(alts.find((a) => a.best)?.waypoint.ident).toBe('OMDB');
   });
 });
