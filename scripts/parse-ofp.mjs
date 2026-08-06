@@ -15,9 +15,11 @@
  * Digital OFPs carry a text layer, so no OCR is needed. A scanned/printed OFP
  * would need OCR first (out of scope) — export it as text and pass the .txt.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { extractOfp } from '../src/data/ofp.ts';
 
 const AP_CSV = 'https://davidmegginson.github.io/ourairports-data/airports.csv';
@@ -108,6 +110,9 @@ async function main() {
   console.log('Dest alternates    :', x.destAlternates.join(' ') || '—');
   console.log('ETOPS/en-route ALTN:', x.enrouteAlternates.join(' ') || '—');
   console.log('All airports found :', x.allAirports.join(' '));
+  const withTaf = x.airports.filter((a) => a.tafRaw).length;
+  if (x.airports.length)
+    console.log(`Inline weather     : ${withTaf}/${x.airports.length} airports carry a TAF`);
   if (x.routeTokens.length) console.log('Route (field 15)   :', x.routeTokens.join(' '));
   for (const w of x.warnings) console.warn('  ! ' + w);
 
@@ -123,13 +128,26 @@ async function main() {
 
   if (!build) {
     console.log('\nidents:', ordered.join(' '));
-    console.log('(add --build to fetch weather+runways and write the pack)');
+    console.log('(add --build to join runways + write the pack, using the OFP TAFs)');
     return;
   }
 
-  const buildArgs = [...ordered];
+  // Hand the OFP's own METAR/TAF to the pack builder so the pack carries the
+  // dispatch briefing's forecasts; NOAA only fills any gaps.
+  const wx = {};
+  for (const a of x.airports) {
+    if (a.tafRaw || a.metarRaw) wx[a.ident] = { tafRaw: a.tafRaw, metarRaw: a.metarRaw };
+  }
+  const wxFile = join(tmpdir(), `ofp-wx-${ordered.join('-').slice(0, 40)}.json`);
+  mkdirSync(tmpdir(), { recursive: true });
+  writeFileSync(wxFile, JSON.stringify(wx));
+
+  const buildArgs = [...ordered, '--wx', wxFile];
   if (out) buildArgs.push('--out', out);
-  console.log('\n[ofp] building briefing pack for', ordered.length, 'airports…');
+  console.log(
+    `\n[ofp] building briefing pack for ${ordered.length} airports ` +
+      `(${Object.keys(wx).length} with OFP weather)…`,
+  );
   const buildScript = fileURLToPath(new URL('./build-briefing.mjs', import.meta.url));
   const res = spawnSync('node', [buildScript, ...buildArgs], { stdio: 'inherit' });
   process.exit(res.status ?? 0);
