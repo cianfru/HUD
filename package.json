@@ -19,13 +19,17 @@
     "preview:glasses-gfx": "vite preview --config vite.glasses-gfx.config.ts --port 5178",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "briefing": "node scripts/build-briefing.mjs",
+    "ofp": "tsx scripts/parse-ofp.mjs"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.13"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
+    "pdfjs-dist": "^4.10.38",
+    "tsx": "^4.23.8",
     "typescript": "^5.7.3",
     "vite": "^6.0.7",
     "vitest": "^3.0.2"
