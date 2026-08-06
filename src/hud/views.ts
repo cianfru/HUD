@@ -137,9 +137,9 @@ function buildSettings(s: HudState): HudContainer[] {
 }
 
 function statusText(s: HudState): string {
-  // Kept compact to fit the right edge of the 576px display.
-  const fix = s.position ? '✓' : '✗';
-  const acc = s.position?.accuracyM != null ? `±${Math.round(s.position.accuracyM)}m` : '';
+  // ASCII only — the G2 firmware font has no check/cross glyphs (U+2713/U+2717).
+  if (!s.position) return 'NO GPS';
+  const acc = s.position.accuracyM != null ? ` ${Math.round(s.position.accuracyM)}m` : '';
   const bat = s.device.batteryLevel != null ? ` ${s.device.batteryLevel}%` : '';
-  return `GPS ${fix} ${acc}${bat}`.replace(/\s+/g, ' ').trim();
+  return `GPS${acc}${bat}`;
 }

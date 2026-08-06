@@ -151,6 +151,34 @@ feeds this same GPS path).
 
 ---
 
+## Validated in the official EvenHub simulator
+
+The **glasses build** (`src/glasses/`) renders through the real Even Hub SDK
+(text containers), and is validated against the **official
+`@evenrealities/evenhub-simulator`** — which rasterises the actual 576×288
+glasses framebuffer with the real firmware font. These are real captures from it:
+
+<p align="center">
+  <img src="docs/screenshots/glasses-cruise.png" width="49%" alt="CRUISE on the emulated glasses" />
+  <img src="docs/screenshots/glasses-route.png" width="49%" alt="ROUTE on the emulated glasses" />
+</p>
+
+Run it (on a machine with a display):
+
+```bash
+npm run dev:glasses      # serves http://localhost:5175
+npx @evenrealities/evenhub-simulator http://localhost:5175
+```
+
+It can also run **headless** (the simulator has an automation HTTP API): with
+`xvfb` + `libwebkit2gtk-4.1` installed, `scripts/sim-shot.sh out.png [action]`
+boots the sim against the glasses build and captures the glasses framebuffer.
+This immediately caught two real firmware discrepancies the canvas preview
+missed: the **8-text-container-per-page limit**, and the firmware font's lack of
+`✓`/`✗` glyphs. Both fixed.
+
+---
+
 ## The platform, in one paragraph
 
 A G2 "app" is a **web app** loaded into a WebView on the paired iPhone; the

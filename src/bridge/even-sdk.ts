@@ -22,14 +22,14 @@ import type {
   DeviceState,
 } from './bridge.js';
 
-/** Reserved id for the invisible full-screen touch-capture layer. */
-const CAPTURE_ID = 12;
+/** Max text containers per page (firmware/simulator limit). */
+const MAX_TEXT_CONTAINERS = 8;
 
 export class EvenSdkBridge implements GlassesBridge {
   constructor(private readonly bridge: EvenAppBridge) {}
 
   async createPage(containers: HudContainer[]): Promise<void> {
-    const textObject = this.withCapture(containers);
+    const textObject = this.toTextObjects(containers);
     const page = new CreateStartUpPageContainer({
       containerTotalNum: textObject.length,
       textObject,
@@ -38,7 +38,7 @@ export class EvenSdkBridge implements GlassesBridge {
   }
 
   async rebuildPage(containers: HudContainer[]): Promise<void> {
-    const textObject = this.withCapture(containers);
+    const textObject = this.toTextObjects(containers);
     const page = new RebuildPageContainer({
       containerTotalNum: textObject.length,
       textObject,
@@ -47,22 +47,17 @@ export class EvenSdkBridge implements GlassesBridge {
   }
 
   /**
-   * The firmware/simulator only routes touchpad input to the app when a page
-   * has an event-capturing container, so every page carries one invisible
-   * full-screen capture layer (drawn first, so it sits behind the readouts).
+   * Map to SDK text containers, capped at the firmware limit, with the first
+   * container marked as the event-capturer — the firmware/simulator only route
+   * touchpad input to the app when a page has an event-capturing container, and
+   * a dedicated extra container would blow the 8-container budget.
    */
-  private withCapture(containers: HudContainer[]): TextContainerProperty[] {
-    const capture = new TextContainerProperty({
-      containerID: CAPTURE_ID,
-      xPosition: 0,
-      yPosition: 0,
-      width: 576,
-      height: 288,
-      borderWidth: 0,
-      isEventCapture: 1,
-      content: '',
+  private toTextObjects(containers: HudContainer[]): TextContainerProperty[] {
+    return containers.slice(0, MAX_TEXT_CONTAINERS).map((c, i) => {
+      const t = toTextContainer(c);
+      if (i === 0) t.isEventCapture = 1;
+      return t;
     });
-    return [capture, ...containers.map(toTextContainer)];
   }
 
   async updateText(id: number, text: string): Promise<void> {
