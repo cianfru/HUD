@@ -14,6 +14,9 @@
     "dev:glasses": "vite --config vite.glasses.config.ts",
     "build:glasses": "tsc --noEmit && vite build --config vite.glasses.config.ts",
     "preview:glasses": "vite preview --config vite.glasses.config.ts --port 5175",
+    "dev:glasses-gfx": "vite --config vite.glasses-gfx.config.ts",
+    "build:glasses-gfx": "tsc --noEmit && vite build --config vite.glasses-gfx.config.ts",
+    "preview:glasses-gfx": "vite preview --config vite.glasses-gfx.config.ts --port 5178",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

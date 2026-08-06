@@ -30,6 +30,21 @@ export const DAY: Palette = {
   glow: 2,
 };
 
+/**
+ * Grayscale palette for rendering to an IMAGE container on the glasses: the
+ * firmware maps a pushed PNG's luminance to the 16-level green display (black =
+ * unlit). Rendering white-on-black gives the cleanest brightness → intensity
+ * mapping, spread across the 16 levels. No glow (shadowBlur doesn't map well).
+ */
+export const GRAY: Palette = {
+  bright: '#ffffff',
+  mid: '#c8c8c8',
+  dim: '#8c8c8c',
+  faint: '#5a5a5a',
+  ghost: '#323232',
+  glow: 0,
+};
+
 export function text(
   ctx: CanvasRenderingContext2D,
   s: string,

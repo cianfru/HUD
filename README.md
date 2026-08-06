@@ -177,6 +177,27 @@ This immediately caught two real firmware discrepancies the canvas preview
 missed: the **8-text-container-per-page limit**, and the firmware font's lack of
 `✓`/`✗` glyphs. Both fixed.
 
+### Graphical HUD on the glasses (image containers)
+
+The **target-acquisition view** is free-form graphics, so on the glasses it
+renders as **image containers**, not text. Using the simulator as an oracle, the
+pixel format was confirmed to be a **base64-encoded PNG** (the firmware maps its
+luminance to the 16-level green display; black = unlit). Since image containers
+cap at 288×144, the 576×288 display is covered by a **2×2 grid of four PNG tiles**
+(`src/bridge/image-display.ts`), re-pushing only tiles that changed. These are
+real captures from the official simulator of the graphical build
+(`src/glasses-gfx/`, `npm run dev:glasses-gfx`):
+
+<p align="center">
+  <img src="docs/screenshots/glasses-target-sweep.png" width="32%" alt="Sweep + attitude horizon" />
+  <img src="docs/screenshots/glasses-target-acquire.png" width="32%" alt="Airport acquired under the reticle" />
+  <img src="docs/screenshots/glasses-target-lock.png" width="32%" alt="Locked — detail card" />
+</p>
+
+So the signature interaction — sweep, acquire, lock, read the field's info —
+now runs on the actual glasses framebuffer (attitude horizon, azimuth tape,
+off-screen cues, reticle, and the lock card with runway + live-style METAR).
+
 ---
 
 ## The platform, in one paragraph

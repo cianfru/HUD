@@ -7,3 +7,6 @@ coverage/
 *.tgz
 dist-mobile/
 dist-glasses/
+dist-glasses-gfx/
+dist-imgprobe/
+probe-*.png

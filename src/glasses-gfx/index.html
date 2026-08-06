@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>G2 Aviation HUD — Glasses (graphical)</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #06100b; color: #6b8f77;
+        font-family: ui-monospace, Menlo, monospace; }
+      .wrap { height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+    </style>
+  </head>
+  <body>
+    <!-- The HUD renders on the emulated glasses via image containers, not here. -->
+    <div class="wrap"><p id="status">initialising…</p></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
