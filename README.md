@@ -59,15 +59,25 @@ Try it: `npm run dev`, then move the mouse (= your head), `Enter`/`Space` to loc
 
 ---
 
-## Aircraft attitude from the mounted phone (optional)
+## Experimental phone-derived orientation reference (laboratory mode)
 
-The iPhone is mounted on the airframe, so **its IMU is an aircraft attitude
-source** — a portable-AHRS, like a Sentry/Levil. That gives *two* gyros: the
-**phone → aircraft attitude** and the **glasses → head orientation**. Their
-difference is head-relative-to-airframe, which is what makes an approximately
-**conformal horizon** possible: it stays pinned to the real world as you bank and
-as you tilt your head. Press `A` for the horizon + pitch ladder, `Q`/`E` to tilt
-your head and watch it counter-rotate.
+The iPhone is mounted on the airframe, so its IMU can produce an **experimental,
+phone-derived orientation reference** — in spirit like a portable-AHRS
+(Sentry/Levil), but making none of the claims a certified one earns. Differencing
+the **phone (airframe) gyro** against the **glasses (head) gyro** gives
+head-relative-to-airframe, which *could* drive a world-referenced horizon. Press
+`A` for the horizon + pitch ladder, `Q`/`E` to tilt your head and watch it
+counter-rotate.
+
+**This is an engineering laboratory, not a product feature, and the horizon is
+deliberately not called "conformal."** Conformality is an end-to-end claim about
+angular accuracy *and* latency, and none of that has been measured on hardware.
+Beyond coordinated-turn error (below), the real obstacles are mounting flex and
+airframe vibration, gyro bias/drift, thermal throttling of the phone, and — the
+subtle one — **timestamp alignment between two independently BLE-latent sensor
+streams**: small timing skew between the phone and glasses feeds shows up as
+visible horizon motion. Until measured end-to-end on a G2 + mounted phone, treat
+this as a curiosity, not a reference.
 
 <p align="center">
   <img src="docs/screenshots/attitude-horizon.png" width="49%" alt="Horizon + pitch ladder from phone AHRS" />
