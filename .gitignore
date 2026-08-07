@@ -8,6 +8,7 @@ coverage/
 dist-mobile/
 dist-glasses/
 dist-glasses-gfx/
+dist-simref/
 dist-imgprobe/
 probe-*.png
 briefing/
