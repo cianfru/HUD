@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>G2 Sim Reference</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #06100b; color: #6b8f77;
+        font-family: ui-monospace, Menlo, monospace; }
+      .wrap { height: 100%; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 10px; text-align: center; padding: 20px; }
+      h1 { font-size: 14px; letter-spacing: .1em; color: #9fe6bd; margin: 0; text-transform: uppercase; }
+      p { font-size: 12px; max-width: 34em; line-height: 1.5; margin: 0; }
+      code { color: #37f39a; }
+    </style>
+  </head>
+  <body>
+    <!-- The deck renders on the GLASSES display via the SDK; this is the webview status line. -->
+    <div class="wrap">
+      <h1>G2 Sim Reference</h1>
+      <p id="status">initialising…</p>
+      <p>Swipe <code>Up/Down</code> = card, <code>Double-click</code> = next eval,
+        <code>Click</code> = jump to EVENTS.</p>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
