@@ -12,3 +12,6 @@ dist-simref/
 dist-imgprobe/
 probe-*.png
 briefing/
+
+# Airline-internal sim/OFP working files — never commit
+content/

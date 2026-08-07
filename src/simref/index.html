@@ -12,16 +12,54 @@
       h1 { font-size: 14px; letter-spacing: .1em; color: #9fe6bd; margin: 0; text-transform: uppercase; }
       p { font-size: 12px; max-width: 34em; line-height: 1.5; margin: 0; }
       code { color: #37f39a; }
+      textarea { width: min(90vw, 40em); height: 8em; background: #0a1a12; color: #9fe6bd;
+        border: 1px solid #234; border-radius: 6px; font-family: ui-monospace, monospace;
+        font-size: 11px; padding: 8px; }
+      .btns { display: flex; gap: 10px; }
+      button { background: #123; color: #9fe6bd; border: 1px solid #2a5; border-radius: 6px;
+        padding: 6px 14px; font-size: 12px; cursor: pointer; }
+      .msg { font-size: 11px; color: #7fd6a6; min-height: 1.2em; }
     </style>
   </head>
   <body>
-    <!-- The deck renders on the GLASSES display via the SDK; this is the webview status line. -->
+    <!-- The deck renders on the GLASSES display via the SDK; this panel imports content. -->
     <div class="wrap">
       <h1>G2 Sim Reference</h1>
       <p id="status">initialising…</p>
       <p>Swipe <code>Up/Down</code> = card, <code>Double-click</code> = next eval,
         <code>Click</code> = jump to EVENTS.</p>
+      <p>Paste AI-converted content (a <code>SimEvalSet</code> JSON) to load your own deck.
+        It is stored on this device only — never uploaded.</p>
+      <textarea id="json" placeholder='{"name":"...","evals":[ ... ]}'></textarea>
+      <div class="btns">
+        <button id="load">Load &amp; render</button>
+        <button id="clear">Reset to sample</button>
+      </div>
+      <p class="msg" id="msg"></p>
     </div>
+    <script>
+      // Plain script: manage the local content store, then reload so the SDK
+      // build (main.ts) picks it up. No content ever leaves the device.
+      const KEY = 'simref.content';
+      const msg = document.getElementById('msg');
+      document.getElementById('json').value = localStorage.getItem(KEY) || '';
+      document.getElementById('load').onclick = () => {
+        const t = document.getElementById('json').value.trim();
+        try {
+          const o = JSON.parse(t);
+          if (!o || !Array.isArray(o.evals)) throw new Error('need {name, evals:[...]}');
+          localStorage.setItem(KEY, JSON.stringify(o));
+          msg.textContent = 'Loaded — reloading…';
+          location.reload();
+        } catch (e) {
+          msg.textContent = 'Invalid JSON: ' + e.message;
+        }
+      };
+      document.getElementById('clear').onclick = () => {
+        localStorage.removeItem(KEY);
+        location.reload();
+      };
+    </script>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

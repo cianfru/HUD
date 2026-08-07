@@ -1,13 +1,16 @@
 /**
- * Sim-reference cards.
+ * Sim-reference cards — content model + loader.
  *
- * Airline sim prep comes as a dense, fixed-grid "evaluation" sheet per exercise
- * (setup strip · airport data · ops · a timeline of events · arrival). Those
- * sheets are photos with no text layer, and an A4 grid can't be shrunk onto a
- * 576x288 monochrome display and stay readable — so we model each evaluation as
- * DATA and render a small deck of glance-cards from it. This is the typed shape
- * a card is filled from (by hand each cycle, or OCR-then-verify); it is not an
- * operational document and carries no authority.
+ * Airline sim prep comes as a dense, fixed-grid "evaluation" sheet per exercise.
+ * Those sheets are often image-only (no text layer) and internal, so we do NOT
+ * parse them: an AI model converts a sheet into the JSON shape below (numbers
+ * entered exactly, unreadable fields left null), and the app renders a small
+ * deck of glance-cards from it. This file defines that interchange shape and a
+ * loader; see docs/sim-content-format.md for the schema + conversion prompt.
+ *
+ * IMPORTANT: the data bundled here is a SYNTHETIC example only. Real evaluation
+ * content is airline-internal — load it at runtime (imported on the device,
+ * stored locally) so it never enters source control.
  */
 export interface Apt {
   ident: string;
@@ -35,7 +38,7 @@ export interface SimEval {
   ac: string;
   no: number;
   title: string;
-  /** City pair, e.g. "OMDB-OOMS". */
+  /** City pair, e.g. "LOWW-EDDM". */
   pair: string;
   callsign: string;
   /** Pilot flying for the exercise: "FO" / "CP". */
@@ -59,126 +62,118 @@ export interface SimEval {
   events: SimEventItem[];
 }
 
-// Hand-modelled from the real A350 Recurrent Cycle 3 prep (Figures B-9, B-10).
-export const A350_CYCLE3: SimEval[] = [
-  {
-    ac: 'A350',
-    no: 1,
-    title: 'LOSS OF INSTRUMENTATION',
-    pair: 'OMDB-OOMS',
-    callsign: 'QTR21S',
-    pf: 'FO',
-    setup: {
-      dep: 'OMDB/12R',
-      dest: 'OOMS/08R',
-      wind: '180/15',
-      qnh: '1000',
-      rwyCond: 'DRY',
-      zfw: '190.0',
-      tow: '200.8',
-      crzLvl: 'FL250',
-      flap: 'CREW',
-      simPrep: 'GATE',
+export interface SimEvalSet {
+  /** Free-text label, e.g. "A320 Recurrent Cycle N". */
+  name: string;
+  evals: SimEval[];
+}
+
+/**
+ * SYNTHETIC example — fictional idents/scenarios, structurally identical to a
+ * real sheet. This is what ships in the repo; real content is loaded at runtime.
+ */
+export const SAMPLE_SET: SimEvalSet = {
+  name: 'SAMPLE — Recurrent (example)',
+  evals: [
+    {
+      ac: 'A320',
+      no: 1,
+      title: 'ENGINE FAILURE AFTER V1 (EXAMPLE)',
+      pair: 'LOWW-EDDM',
+      callsign: 'SAMPLE01',
+      pf: 'FO',
+      setup: {
+        dep: 'LOWW/29',
+        dest: 'EDDM/26R',
+        wind: '250/10',
+        qnh: '1013',
+        rwyCond: 'DRY',
+        zfw: '58.0',
+        tow: '70.5',
+        crzLvl: 'FL350',
+        flap: '1+F',
+        v2: '145',
+        simPrep: 'T/O',
+      },
+      dep: {
+        ident: 'LOWW',
+        rwy: '29',
+        atis: '122.125',
+        del: '121.750',
+        gnd: '121.600',
+        twr: '119.400',
+        dep: '123.730',
+        elev: '600',
+        msa: '4700',
+        ta: '10000',
+        tl: 'FL130',
+      },
+      arr: {
+        ident: 'EDDM',
+        rwy: '26R',
+        atis: '123.125',
+        del: '121.775',
+        twr: '120.500',
+        app: '128.025',
+        elev: '1487',
+        msa: '6500',
+        ta: '5000',
+        tl: 'FL070',
+      },
+      ops: {
+        mel: '(example) none',
+        notam: '(example) none',
+        rte: 'LOWW BENED1W BENOT UL725 NARKA T163 ROKIL EDDM',
+        clearance: 'SAMPLE01 EDDM BENED1W RWY29 SQ1000',
+      },
+      events: [
+        { phase: 'T/O', text: 'Take-off Runway 29' },
+        { phase: 'V1', text: 'Engine failure just after V1 — continue', warn: true },
+        { phase: 'CLIMB', text: 'EO SID, clean up, ECAM actions' },
+        { phase: 'APPR', text: 'Single-engine radar vectors ILS 26R' },
+        { phase: 'LDG', text: 'Single-engine landing, exercise complete' },
+      ],
     },
-    dep: {
-      ident: 'OMDB',
-      rwy: '12R',
-      atis: '126.275',
-      del: '120.35',
-      gnd: '118.35',
-      twr: '119.55',
-      dep: '121.025',
-      elev: '62',
-      msa: '3800',
-      ta: '13000',
-      tl: 'FL150',
-    },
-    arr: {
-      ident: 'OOMS',
-      rwy: '08R',
-      atis: '126.8',
-      del: '125.575',
-      twr: '118.4',
-      app: '121.2',
-      elev: '49',
-      msa: '9100',
-      ta: '13000',
-      tl: 'FL150',
-    },
-    ops: {
-      mel: '36-11-01A ENG BLEED AIR SYS 1',
-      notam: 'OMDB RWY 12L CLSD',
-      rte: 'OMDB 12R ANVI5G ANVIX L223 TARDI N629 IVAKU G216 MCT OOMS 08R',
-      clearance: 'QTR21S OOMS ANVI5G RWY12R SQ3330 DEP 121.025',
-    },
-    events: [
-      { phase: 'T/O', text: 'CTOT STD+30. Line-up 12R via K1, cleared T/O' },
-      { phase: 'CLIMB', text: 'Contact Dubai DEP 121.025. Unrestricted FL210, spd 310+' },
-      { phase: 'ACTIVATE', text: 'Between 10000 FT and FL150' },
-      { phase: 'CAE', text: 'Autoflight - AFS CTL PNL FAULT (FCU 1+2 FAULT)', warn: true },
-      { phase: 'APPR', text: 'Vectors for selected rwy/approach' },
-      { phase: 'LDG', text: 'Sim complete incapacitation passing 100 KTS' },
-    ],
-  },
-  {
-    ac: 'A350',
-    no: 2,
-    title: 'MNGMT OF CONSEQUENCES',
-    pair: 'OMDB-VABB',
-    callsign: 'QTR21S',
-    pf: 'CP',
-    setup: {
-      dep: 'OMDB/12R',
-      dest: 'VABB/27',
-      wind: '180/15',
-      qnh: '1000',
-      rwyCond: 'DRY',
-      zfw: '190.0',
-      tow: '214.8',
-      crzLvl: 'FL390',
-      flap: '1+F',
-      v2: '153',
-      simPrep: 'T/O',
-    },
-    dep: {
-      ident: 'OMDB',
-      rwy: '12R',
-      atis: '126.275',
-      del: '120.35',
-      gnd: '118.35',
-      twr: '119.55',
-      dep: '121.025',
-      elev: '62',
-      msa: '3800',
-      ta: '13000',
-      tl: 'FL150',
-    },
-    arr: {
-      ident: 'VABB',
-      rwy: '27',
-      atis: '126.4',
-      del: '121.85',
-      gnd: '121.9',
-      twr: '118.1',
-      app: '127.9',
-      elev: '40',
-      msa: '3800',
-      ta: '6000',
-      tl: 'FL80',
-    },
-    ops: {
-      mel: '36-11-01A ENG BLEED AIR SYS 1',
-      notam: 'OMDB RWY 12L CLSD',
-      rte: 'OMDB 12R ANVI5G ANVIX L223 TARDI N629 GIDAN N881 RASKI L301 KARKU M638 EXOLU POKON POKO2A VABB 27',
-      clearance: 'QTR21S VABB ANVI5G RWY12R SQ3330 DEP 121.025',
-    },
-    events: [
-      { phase: 'T/O', text: 'Take-off Runway 12R' },
-      { phase: 'CLIMB', text: 'Contact Dubai DEP 121.025. Via SID FL210, expedite thru FL150' },
-      { phase: 'ACTIVATE', text: 'Between 8000 FT and 12000 FT' },
-      { phase: 'CAE', text: 'Pneumatic - WING LEAK RIGHT', warn: true },
-      { phase: 'G/A', text: '2000 AAL FAIL ILS LOC. If continue: G/A + vectors, ILS or RNP', warn: true },
-      { phase: 'LDG', text: 'Exercise complete after landing' },
-    ],
-  },
-];
+  ],
+};
+
+// Minimal runtime validation so imported JSON can't render garbage silently.
+export function isSimEvalSet(x: unknown): x is SimEvalSet {
+  if (!x || typeof x !== 'object') return false;
+  const s = x as SimEvalSet;
+  return typeof s.name === 'string' && Array.isArray(s.evals) && s.evals.every(isSimEval);
+}
+
+function isSimEval(x: unknown): x is SimEval {
+  if (!x || typeof x !== 'object') return false;
+  const e = x as SimEval;
+  return (
+    typeof e.no === 'number' &&
+    typeof e.title === 'string' &&
+    !!e.setup &&
+    !!e.dep &&
+    !!e.arr &&
+    Array.isArray(e.events)
+  );
+}
+
+/**
+ * Content to render: imported JSON from local storage if present and valid,
+ * otherwise the synthetic sample. Real content is imported on the device (see
+ * the webview panel) and stored under this key — it never enters the repo.
+ */
+export const CONTENT_KEY = 'simref.content';
+
+export function loadContent(): SimEvalSet {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CONTENT_KEY) : null;
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (isSimEvalSet(parsed)) return parsed;
+      console.warn('[simref] stored content failed validation — using sample');
+    }
+  } catch (e) {
+    console.warn('[simref] could not read stored content:', e);
+  }
+  return SAMPLE_SET;
+}

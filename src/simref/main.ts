@@ -10,7 +10,7 @@
  */
 import { waitForEvenAppBridge } from '@evenrealities/even_hub_sdk';
 import { EvenSdkBridge } from '../bridge/even-sdk.js';
-import { A350_CYCLE3 } from '../data/simcard.js';
+import { loadContent } from '../data/simcard.js';
 import { deckFor, renderCard } from './cards.js';
 import type { Card } from './cards.js';
 
@@ -33,9 +33,13 @@ async function boot(): Promise<void> {
   const sdk = await waitForEvenAppBridge();
   const bridge = new EvenSdkBridge(sdk);
 
+  // Content is imported on the device (AI-converted JSON, stored locally) or the
+  // bundled synthetic sample — no parser, no real content in the repo.
+  const set = loadContent();
+
   // Flatten every evaluation's deck into one navigable list.
   const flat: FlatCard[] = [];
-  for (const ev of A350_CYCLE3) {
+  for (const ev of set.evals) {
     const deck = deckFor(ev);
     const evalStart = flat.length;
     deck.forEach((card, i) =>
@@ -81,7 +85,7 @@ async function boot(): Promise<void> {
   });
 
   draw();
-  status(`sim reference loaded — ${A350_CYCLE3.length} evals, ${flat.length} cards`);
+  status(`"${set.name}" — ${set.evals.length} evals, ${flat.length} cards`);
 }
 
 boot().catch((err) => status(`failed to start: ${String(err)}`));
