@@ -13,6 +13,8 @@ import type { Assessment, Minima } from '../core/taf.js';
 import { distanceNm, initialBearingDeg } from '../core/geo.js';
 import type { LatLon, Waypoint } from '../core/types.js';
 import type { AlternateCandidate } from '../core/diversion.js';
+import { evaluateSuitability } from '../core/suitability.js';
+import type { SuitabilityReport, SuitabilityMinima } from '../core/suitability.js';
 
 export interface BriefingAirport {
   ident: string;
@@ -24,6 +26,8 @@ export interface BriefingAirport {
   longestRwyFt?: number;
   /** True if any runway is a hard surface (paved). */
   hardSurface?: boolean;
+  /** True runway headings (deg) across the field's runways — for crosswind. */
+  runwayHeadingsDeg?: number[];
 }
 
 export interface BriefingWx {
@@ -87,6 +91,38 @@ export class BriefingStore {
     const taf = parseTaf(raw, this.createdAt);
     if (!taf) return null;
     return assessTaf(taf, at, minima);
+  }
+
+  /**
+   * Transparent per-check suitability at `at`: runway/surface/ceiling/visibility/
+   * crosswind/validity/data-age, each pass/fail/unknown with a reason, plus an
+   * overall verdict. This is the "why" behind a GO/NOGO — surface it on the
+   * selected-airport card. Returns null for an unknown field.
+   */
+  report(ident: string, at: Date, minima?: SuitabilityMinima): SuitabilityReport | null {
+    const a = this.airports.get(ident);
+    if (!a) return null;
+    const assessment = this.assess(ident, at); // null when no TAF is cached
+    const prevailing = assessment?.prevailing;
+    return evaluateSuitability(
+      {
+        longestRwyFt: a.longestRwyFt,
+        hardSurface: a.hardSurface,
+        runwayHeadingsDeg: a.runwayHeadingsDeg,
+        category: assessment?.category,
+        ceilingFt: prevailing?.ceilingFt,
+        visM: prevailing?.visM,
+        windDirDeg: prevailing?.windDirDeg,
+        windKt: prevailing?.windKt,
+        gustKt: prevailing?.gustKt,
+        withinValidity: assessment?.withinValidity,
+        hasForecast: !!this.wx.get(ident)?.tafRaw,
+        // Age of the pack at the moment of the decision (= real age in flight,
+        // deterministic in replay/tests).
+        dataAgeSec: Math.max(0, (at.getTime() - this.createdAt.getTime()) / 1000),
+      },
+      minima,
+    );
   }
 
   asWaypoint(ident: string): Waypoint | undefined {

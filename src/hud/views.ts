@@ -83,6 +83,11 @@ function buildCruise(s: HudState): HudContainer[] {
 function buildDivert(s: HudState): HudContainer[] {
   const W = SCREEN_W - 2 * MARGIN;
 
+  // Detail mode: the best field's per-check reasons (press toggles it).
+  if (s.divertDetail && s.bestReport) {
+    return buildDivertDetail(s);
+  }
+
   // No pack, or a pack but no fix yet — say which, don't show a blank page.
   if (s.alternates === null) {
     const msg =
@@ -125,6 +130,28 @@ function buildDivert(s: HudState): HudContainer[] {
     });
     row++;
   }
+  return containers;
+}
+
+// Detail card: WHY the best field is GO/CAUTION/NOGO — one line per check.
+function buildDivertDetail(s: HudState): HudContainer[] {
+  const W = SCREEN_W - 2 * MARGIN;
+  const { ident, report } = s.bestReport!;
+  const containers: HudContainer[] = [
+    { id: 1, x: MARGIN, y: 8, w: W, h: ROW_H, text: `${ident}   ${report.verdict}` },
+  ];
+  // ASCII status marks — the firmware font has no check/cross glyphs.
+  const mark: Record<string, string> = { pass: 'OK', fail: 'XX', unknown: '--' };
+  report.checks.slice(0, 6).forEach((c, i) => {
+    containers.push({
+      id: 2 + i,
+      x: MARGIN,
+      y: 42 + i * 30,
+      w: W,
+      h: ROW_H,
+      text: `${c.label.padEnd(3)} ${mark[c.status]}  ${c.detail}`,
+    });
+  });
   return containers;
 }
 

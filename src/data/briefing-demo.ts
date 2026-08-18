@@ -1,20 +1,19 @@
 /**
- * Bundled demo briefing pack — a real Doha→Shannon ETOPS-style airport set with
- * runway data (OurAirports) and cached TAFs (NOAA), captured on the ground so
- * the sim/glasses build flies the offline product with NO network.
+ * Bundled demo briefing pack — a real Doha->Shannon ETOPS-style airport set with
+ * runway data + headings (OurAirports) and cached TAFs (NOAA), captured on the
+ * ground so the sim/glasses build flies the offline product with NO network.
  *
- * This is a FROZEN snapshot for the demo. Its TAFs are only valid for ~24-30 h
- * from createdAt, so the demo drives the controller clock from createdAt (see
- * src/glasses/main.ts) to keep suitability inside the forecast window. For a
- * real flight, build a fresh pack: node scripts/build-briefing.mjs <idents...>
+ * FROZEN snapshot for the demo. Its TAFs are only valid ~24-30 h from createdAt,
+ * so the demo drives the controller clock from createdAt (see glasses/main.ts).
+ * For a real flight, build a fresh pack: node scripts/build-briefing.mjs <idents>
  *
- * Generated from briefing/OTHH-EINN.json — do not hand-edit; rebuild instead.
+ * Generated from a build-briefing run — do not hand-edit; rebuild instead.
  */
 import type { BriefingPack } from "./briefing.js";
 
 export const DEMO_BRIEFING: BriefingPack = {
   "version": 1,
-  "createdAt": "2026-08-06T06:03:15.404Z",
+  "createdAt": "2026-08-18T17:16:39.378Z",
   "route": "OTHH OMDB OOMS OEJN HECA LGAV LIRF EGLL BIKF EINN",
   "airports": [
     {
@@ -24,7 +23,13 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": -22.6056,
       "elevFt": 171,
       "longestRwyFt": 10056,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        14,
+        104,
+        194,
+        284
+      ]
     },
     {
       "ident": "EGLL",
@@ -33,7 +38,11 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": -0.4599,
       "elevFt": 83,
       "longestRwyFt": 12799,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        90,
+        270
+      ]
     },
     {
       "ident": "EINN",
@@ -42,7 +51,11 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": -8.9248,
       "elevFt": 46,
       "longestRwyFt": 10495,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        52,
+        232
+      ]
     },
     {
       "ident": "HECA",
@@ -51,7 +64,13 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": 31.3967,
       "elevFt": 322,
       "longestRwyFt": 13124,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        45,
+        49,
+        225,
+        229
+      ]
     },
     {
       "ident": "LGAV",
@@ -60,7 +79,11 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": 23.9445,
       "elevFt": 308,
       "longestRwyFt": 13123,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        37,
+        217
+      ]
     },
     {
       "ident": "LIRF",
@@ -69,7 +92,13 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": 12.252,
       "elevFt": 13,
       "longestRwyFt": 12801,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        70,
+        163,
+        250,
+        343
+      ]
     },
     {
       "ident": "OEJN",
@@ -78,7 +107,11 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": 39.1574,
       "elevFt": 48,
       "longestRwyFt": 13123,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        160,
+        340
+      ]
     },
     {
       "ident": "OMDB",
@@ -87,7 +120,11 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": 55.371,
       "elevFt": 62,
       "longestRwyFt": 14590,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        121,
+        301
+      ]
     },
     {
       "ident": "OOMS",
@@ -96,7 +133,11 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": 58.2853,
       "elevFt": 48,
       "longestRwyFt": 13386,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        85,
+        265
+      ]
     },
     {
       "ident": "OTHH",
@@ -105,68 +146,73 @@ export const DEMO_BRIEFING: BriefingPack = {
       "lon": 51.6081,
       "elevFt": 13,
       "longestRwyFt": 15912,
-      "hardSurface": true
+      "hardSurface": true,
+      "runwayHeadingsDeg": [
+        156,
+        336
+      ]
     }
   ],
   "weather": [
     {
       "ident": "BIKF",
-      "metarRaw": "METAR BIKF 060530Z 17009KT 3000 -RA BR BKN003 OVC050 11/11 Q1005",
-      "metarObsSec": 1785994200,
-      "tafRaw": "TAF BIKF 060434Z 0606/0706 16010KT 8000 -RA BKN010 OVC016 TX12/0615Z TN10/0706Z TEMPO 0606/0706 2500 RADZ BR BKN004 OVC008 BECMG 0618/0620 09008KT"
+      "metarRaw": "METAR BIKF 181700Z 28009KT 250V310 9999 FEW007 SCT035 13/09 Q1013",
+      "metarObsSec": 1787072400,
+      "tafRaw": "TAF BIKF 181638Z 1818/1918 30008KT 9999 SCT030 BKN045 TX13/1915Z TN07/1902Z TEMPO 1900/1918 SCT008 BKN014"
     },
     {
       "ident": "EGLL",
-      "metarRaw": "METAR EGLL 060520Z AUTO 27009KT 9999 NCD 13/10 Q1021",
-      "metarObsSec": 1785993600,
-      "tafRaw": "TAF EGLL 060454Z 0606/0712 28010KT 9999 FEW045 BECMG 0618/0621 34005KT"
+      "metarRaw": "METAR EGLL 181650Z AUTO 26014KT 9999 NCD 24/14 Q1009",
+      "metarObsSec": 1787071800,
+      "tafRaw": "TAF EGLL 181658Z 1818/1924 28012KT 9999 SCT035 PROB30 TEMPO 1821/1901 9000 -RA TEMPO 1901/1909 8000 -RA BKN012 PROB40 TEMPO 1903/1908 4000 SHRA RADZ BKN008 PROB30 TEMPO 1909/1913 8000 -SHRA TEMPO 1913/1920 7000 SHRA PROB30 TEMPO 1915/1920 27015G25KT 4000 +SHRA"
     },
     {
       "ident": "EINN",
-      "metarRaw": "METAR EINN 060530Z 24006KT 9999 FEW014 BKN050 13/10 Q1023 NOSIG",
-      "metarObsSec": 1785994200,
-      "tafRaw": "TAF EINN 060500Z 0606/0706 26007KT 9999 SCT030 BKN045 BECMG 0620/0622 22007KT"
+      "metarRaw": "METAR EINN 181700Z 26008KT 9999 FEW015 SCT030 BKN039 17/13 Q1012 NOSIG",
+      "metarObsSec": 1787072400,
+      "tafRaw": "TAF EINN 181700Z 1818/1918 25012KT 9999 FEW015 BKN035 TEMPO 1818/1902 22009KT 7000 -RA BKN010 PROB40 TEMPO 1818/1902 3000 RADZ BR BKN006 PROB30 TEMPO 1822/1902 24015G25KT PROB40 TEMPO 1905/1918 27015G27KT 4000 SHRA BKN012"
     },
     {
       "ident": "HECA",
-      "metarRaw": "METAR HECA 060530Z 32004KT CAVOK 26/20 Q1010 NOSIG",
-      "metarObsSec": 1785994200,
-      "tafRaw": "TAF HECA 060500Z 0606/0712 34008KT CAVOK TEMPO 0617/0620 36015KT"
+      "metarRaw": "METAR HECA 181700Z 36011KT CAVOK 31/15 Q1009 NOSIG",
+      "metarObsSec": 1787072400,
+      "tafRaw": "TAF HECA 181700Z 1818/1924 02010KT 9999 FEW025 TEMPO 1901/1909 VRB03KT 4000 HZ PROB30 TEMPO 1902/1906 2000 BR"
     },
     {
       "ident": "LGAV",
-      "metarRaw": "METAR LGAV 060520Z 05012KT CAVOK 27/18 Q1011 NOSIG",
-      "metarObsSec": 1785993600,
-      "tafRaw": "TAF LGAV 060500Z 0606/0706 02018G28KT 9999 FEW025 BECMG 0618/0620 35014KT"
+      "metarRaw": "METAR LGAV 181650Z 22008KT 9999 FEW025 27/18 Q1009 NOSIG",
+      "metarObsSec": 1787071800,
+      "tafRaw": "TAF LGAV 181700Z 1818/1918 VRB03KT 9999 FEW025 TEMPO 1909/1915 10010KT SCT020 SCT070"
     },
     {
       "ident": "LIRF",
-      "metarRaw": "METAR LIRF 060520Z 02003KT 350V050 CAVOK 24/17 Q1014 NOSIG",
-      "metarObsSec": 1785993600,
-      "tafRaw": "TAF LIRF 060500Z 0606/0712 VRB05KT CAVOK BECMG 0609/0611 28013KT BECMG 0621/0623 34010KT BECMG 0702/0704 VRB05KT TEMPO 0702/0706 1500 BCFG BKN010 BECMG 0709/0711 26010KT"
+      "metarRaw": "METAR LIRF 181650Z 27007KT CAVOK 29/22 Q1010 NOSIG",
+      "metarObsSec": 1787071800,
+      "tafRaw": "TAF LIRF 181100Z 1812/1918 23010KT CAVOK BECMG 1816/1818 29010KT BECMG 1820/1822 VRB05KT BECMG 1909/1911 24012KT"
     },
     {
       "ident": "OEJN",
-      "metarRaw": "METAR OEJN 060500Z 34008KT CAVOK 34/25 Q1002 NOSIG",
-      "metarObsSec": 1785992400,
-      "tafRaw": "TAF OEJN 060500Z 0606/0712 30018KT 7000 FEW040 PROB30 TEMPO 0609/0615 3000 BLDU BECMG 0618/0620 35010KT BECMG 0708/0710 30016KT"
+      "metarRaw": "METAR OEJN 181700Z 34011KT 9999 FEW040 34/20 Q1005 NOSIG",
+      "metarObsSec": 1787072400,
+      "tafRaw": "TAF OEJN 181100Z 1812/1918 32014KT 9999 FEW040 BECMG 1818/1820 02006KT CAVOK BECMG 1908/1910 32014KT"
     },
     {
       "ident": "OMDB",
-      "metarRaw": "METAR OMDB 060530Z 18006KT 8000 NSC 40/19 Q0998 NOSIG",
-      "metarObsSec": 1785994200,
-      "tafRaw": "TAF OMDB 060500Z 0606/0712 20008KT CAVOK BECMG 0607/0609 33013KT BECMG 0616/0618 VRB02KT BECMG 0703/0705 17010KT BECMG 0708/0710 32013KT"
+      "metarRaw": "METAR OMDB 181700Z 05007KT 030V090 CAVOK 40/22 Q0998 NOSIG",
+      "metarObsSec": 1787072400,
+      "tafRaw": "TAF OMDB 181700Z 1818/2000 06005KT 8000 NSC BECMG 1903/1905 18010KT BECMG 1908/1910 33012KT BECMG 1916/1918 VRB02KT"
     },
     {
       "ident": "OOMS",
-      "metarRaw": "METAR OOMS 060450Z 04005KT CAVOK 37/25 Q0998 NOSIG",
-      "metarObsSec": 1785991800,
-      "tafRaw": "TAF OOMS 052300Z 0600/0706 VRB02KT 8000 NSC PROB30 TEMPO 0600/0602 21015KT BECMG 0606/0608 06012KT BECMG 0615/0617 VRB02KT PROB30 TEMPO 0618/0702 20018KT 5000 DRDU BECMG 0704/0706 02010KT"
+      "metarRaw": "METAR OOMS 181650Z 02003KT 7000 30/29 Q1000 NOSIG",
+      "metarObsSec": 1787071800,
+      "tafRaw": "TAF OOMS 181700Z 1818/1924 VRB02KT 8000 NSC TEMPO 1823/1904 4000 BR BKN020 BECMG 1907/1909 05010KT CAVOK BECMG 1915/1917 VRB02KT 8000"
     },
     {
       "ident": "OTHH",
-      "metarRaw": "METAR OTHH 060500Z 21005KT 180V250 8000 NSC 37/25 Q0998 NOSIG",
-      "metarObsSec": 1785992400
+      "metarRaw": "METAR OTHH 181700Z 04006KT 8000 NSC 35/30 Q0999 NOSIG",
+      "metarObsSec": 1787072400,
+      "tafRaw": "TAF OTHH 181117Z 1812/1918 04008KT 8000 NSC TEMPO 1818/1906 33006KT"
     }
   ]
 };

@@ -86,13 +86,23 @@ async function main() {
   const rwy = await csv(RWY_CSV);
   const rc = (n) => rwy.header.indexOf(n);
   const byId = new Map(airports.map((a) => [a.ident, a]));
+  const headings = new Map(airports.map((a) => [a.ident, new Set()]));
   for (const r of rwy.rows) {
     const id = (r[rc('airport_ident')] || '').toUpperCase();
     const a = byId.get(id);
     if (!a) continue;
+    if (r[rc('closed')] === '1') continue;
     const len = +r[rc('length_ft')];
     if (Number.isFinite(len) && len > 0) a.longestRwyFt = Math.max(a.longestRwyFt || 0, len);
     if (HARD.test(r[rc('surface')] || '')) a.hardSurface = true;
+    for (const col of ['le_heading_degT', 'he_heading_degT']) {
+      const h = +r[rc(col)];
+      if (Number.isFinite(h)) headings.get(id).add(Math.round(h) % 360);
+    }
+  }
+  for (const a of airports) {
+    const hs = [...headings.get(a.ident)];
+    if (hs.length) a.runwayHeadingsDeg = hs.sort((x, y) => x - y);
   }
 
   const override = wxFile ? JSON.parse(readFileSync(wxFile, 'utf8')) : {};

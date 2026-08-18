@@ -16,6 +16,7 @@ import { mpsToKnots } from '../core/units.js';
 import type { Position } from '../core/types.js';
 import type { BriefingStore } from '../data/briefing.js';
 import type { Minima } from '../core/taf.js';
+import type { SuitabilityMinima } from '../core/suitability.js';
 import { HudRenderer } from '../hud/renderer.js';
 import { VIEW_ORDER } from '../hud/model.js';
 import type { HudView, HudState, HudConfig } from '../hud/model.js';
@@ -25,6 +26,8 @@ export interface DiversionOptions {
   limit?: number;
   minRwyM?: number;
   minima?: Minima;
+  /** Thresholds for the transparent per-check suitability report. */
+  reasons?: SuitabilityMinima;
 }
 
 export interface ControllerOptions {
@@ -120,9 +123,13 @@ export class HudController {
     this.draw();
   }
 
+  private divertDetail = false;
+
   private onPress(): void {
     if (this.view === 'CRUISE') {
       this.plan.next();
+    } else if (this.view === 'DIVERT') {
+      this.divertDetail = !this.divertDetail; // show/hide the best field's reasons
     } else if (this.view === 'SETTINGS') {
       this.config.autoSequence = !this.config.autoSequence;
     }
@@ -144,6 +151,8 @@ export class HudController {
     const now = new Date(this.now());
     const guidance = this.position ? this.plan.guidance(this.position) : null;
     const { alternates, briefingAgeSec } = this.computeDiversion(now);
+    const best = alternates?.find((a) => a.best) ?? alternates?.[0];
+    const report = this.briefing && best ? this.briefing.report(best.waypoint.ident, now, this.diversion.reasons) : null;
     return {
       now,
       position: this.position,
@@ -154,6 +163,8 @@ export class HudController {
       flightStartMs: this.flightStartMs,
       alternates,
       briefingAgeSec,
+      divertDetail: this.divertDetail,
+      bestReport: best && report ? { ident: best.waypoint.ident, report } : null,
     };
   }
 

@@ -4,6 +4,7 @@
 import type { Position, Guidance } from '../core/types.js';
 import type { FlightPlan } from '../core/flightplan.js';
 import type { Alternate } from '../core/diversion.js';
+import type { SuitabilityReport } from '../core/suitability.js';
 import type { DeviceState } from '../bridge/bridge.js';
 
 export type HudView = 'CRUISE' | 'DIVERT' | 'ROUTE' | 'SETTINGS';
@@ -32,4 +33,8 @@ export interface HudState {
   alternates: Alternate[] | null;
   /** Age of the loaded briefing pack, seconds — null when no pack is loaded. */
   briefingAgeSec: number | null;
+  /** When true, the DIVERT page shows the best field's per-check reasons. */
+  divertDetail: boolean;
+  /** Transparent suitability for the best alternate (for the detail card). */
+  bestReport: { ident: string; report: SuitabilityReport } | null;
 }

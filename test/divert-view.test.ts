@@ -15,6 +15,8 @@ function baseState(over: Partial<HudState>): HudState {
     flightStartMs: 0,
     alternates: null,
     briefingAgeSec: null,
+    divertDetail: false,
+    bestReport: null,
     ...over,
   };
 }
@@ -66,6 +68,26 @@ describe('DIVERT view', () => {
     expect(c[1]!.text.trim().endsWith('GO')).toBe(true);
     expect(c[2]!.text).toContain('L075');
     expect(c[2]!.text.trim().endsWith('WX')).toBe(true);
+  });
+
+  it('shows the best field per-check reasons in detail mode', () => {
+    const report = {
+      verdict: 'NOGO' as const,
+      checks: [
+        { key: 'runway' as const, label: 'RWY', status: 'pass' as const, severity: 'hard' as const, detail: '13124 ft >= 6562' },
+        { key: 'ceiling' as const, label: 'CIG', status: 'fail' as const, severity: 'hard' as const, detail: '800 ft < 1000' },
+        { key: 'crosswind' as const, label: 'XW', status: 'pass' as const, severity: 'advisory' as const, detail: '4 kt <= 38 (rwy 30)' },
+      ],
+      reasons: ['CIG: 800 ft < 1000'],
+    };
+    const c = buildView(
+      'DIVERT',
+      baseState({ divertDetail: true, bestReport: { ident: 'OMDB', report } }),
+    );
+    expect(c[0]!.text).toBe('OMDB   NOGO');
+    expect(c[1]!.text).toContain('RWY OK');
+    expect(c[2]!.text).toContain('CIG XX');
+    expect(c[2]!.text).toContain('800 ft < 1000');
   });
 
   it('caps the list at 6 rows to respect the 8-text-container firmware limit', () => {

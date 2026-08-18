@@ -11,10 +11,10 @@ const pack: BriefingPack = {
   createdAt: CREATED,
   route: 'OMDB OOMS OERK',
   airports: [
-    // A320-capable: long hard runway.
-    { ident: 'OMDB', name: 'Dubai Intl', lat: 25.2528, lon: 55.3644, elevFt: 62, longestRwyFt: 13124, hardSurface: true },
+    // A320-capable: long hard runway. Runways 12/30 -> headings ~121/301.
+    { ident: 'OMDB', name: 'Dubai Intl', lat: 25.2528, lon: 55.3644, elevFt: 62, longestRwyFt: 13124, hardSurface: true, runwayHeadingsDeg: [121, 301] },
     // A320-capable, ~340 nm ENE of Dubai.
-    { ident: 'OOMS', name: 'Muscat Intl', lat: 23.5933, lon: 58.2844, elevFt: 48, longestRwyFt: 13123, hardSurface: true },
+    { ident: 'OOMS', name: 'Muscat Intl', lat: 23.5933, lon: 58.2844, elevFt: 48, longestRwyFt: 13123, hardSurface: true, runwayHeadingsDeg: [83, 263] },
     // Too short for an A320 (grass strip, ~1200 ft).
     { ident: 'OKBK', name: 'Tiny Field', lat: 24.0, lon: 56.0, elevFt: 30, longestRwyFt: 1200, hardSurface: false },
     // No runway data at all -> not capable.
@@ -88,6 +88,34 @@ describe('BriefingStore — nearby', () => {
   it('excludes fields beyond maxNm', () => {
     const near = store.nearby({ lat: 25.2528, lon: 55.3644 }, 100);
     expect(near.map((n) => n.airport.ident)).toEqual(['OMDB']);
+  });
+});
+
+describe('BriefingStore — transparent suitability report', () => {
+  const store = new BriefingStore(pack);
+
+  it('returns a GO verdict with passing checks for a good field', () => {
+    const r = store.report('OMDB', at(5, 20))!;
+    expect(r.verdict).toBe('GO');
+    expect(r.checks.find((c) => c.key === 'runway')!.status).toBe('pass');
+    expect(r.checks.find((c) => c.key === 'crosswind')!.status).toBe('pass');
+  });
+
+  it('turns the FM ceiling drop into a NOGO with a stated reason', () => {
+    // OMDB after 06:06Z: vis 3000 m + BKN008 (800 ft) -> below ceiling minimum.
+    const r = store.report('OMDB', at(6, 8))!;
+    expect(r.verdict).toBe('NOGO');
+    expect(r.reasons.join(' ')).toMatch(/CIG/);
+  });
+
+  it('reports UNKNOWN weather when no TAF is cached (runway still checked)', () => {
+    const r = store.report('OERK', at(5, 20))!;
+    expect(r.checks.find((c) => c.key === 'ceiling')!.status).toBe('unknown');
+    expect(r.verdict).toBe('UNKNOWN');
+  });
+
+  it('is null for a field not in the pack', () => {
+    expect(store.report('ZZZZ', at(5, 20))).toBeNull();
   });
 });
 
