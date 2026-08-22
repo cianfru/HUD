@@ -9,7 +9,11 @@ app — nothing separate is installed on the glasses.
 
 1. **Install Node.js LTS** from nodejs.org, and Git. Check in Terminal:
    `node -v` and `git -v` should both print a version.
-2. **Get the code** (the work is on the feature branch, not `main`):
+2. **Install the Even Hub tooling** (global — gives the `evenhub` / `eh` CLI):
+   ```bash
+   npm install -g @evenrealities/evenhub-cli @evenrealities/evenhub-simulator
+   ```
+3. **Get the code** (the work is on the feature branch, not `main`):
    ```bash
    git clone https://github.com/cianfru/hud.git
    cd hud
@@ -36,9 +40,9 @@ it. Both devices are now on the phone's network with no isolation.
    npm run dev:simref      # or: npm run dev:glasses  (the diversion HUD)
    ```
    Vite prints a **Network** URL like `http://192.168.x.x:5176` — note that IP:port.
-2. Make a QR pointing at that URL with Even's CLI (exact install confirmed live):
+2. In a second Terminal tab (leave the dev server running), make a QR at that URL:
    ```bash
-   evenhub qr --url "http://192.168.x.x:5176"
+   evenhub qr --url "http://192.168.x.x:5175"   # or: eh qr --url "..."
    ```
 3. In the Even app → **Even Hub → Developer / Scan** → scan the QR off your
    Terminal. The app renders on the glasses.
@@ -53,7 +57,6 @@ it. Both devices are now on the phone's network with no isolation.
   real head-tracking rate and motion-to-photon lag — the numbers that decide how
   much head-referenced behaviour (look-to-declutter, look-lock) is worth building.
 
-## Two things we confirm together at the machine
+## One thing we confirm together at the machine
 
-- The exact `evenhub` CLI install/command (Even's tooling name/flags shift).
-- The precise Developer-Mode menu path in your app version.
+- The precise Developer-Mode / Scan menu path in your Even app version.
