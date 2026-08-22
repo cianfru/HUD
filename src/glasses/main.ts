@@ -46,16 +46,12 @@ async function boot(): Promise<void> {
   });
 
   // Offline: the whole diversion picture comes from a pack downloaded on the
-  // ground, never the network. The demo pack's TAFs are frozen, so run the
-  // controller clock forward from the briefed time to keep suitability inside
-  // the forecast window.
+  // ground, never the network. Clock is real UTC; the diversion assessment runs
+  // at real time too (build a fresh pack pre-flight so its TAFs are in-window).
   const briefing = new BriefingStore(DEMO_BRIEFING);
-  const briefedBase = new Date(DEMO_BRIEFING.createdAt).getTime() + 20 * 60_000;
-  const bootReal = Date.now();
 
   const controller = new HudController(bridge, source, new FlightPlan(waypoints), {
     tickMs: 1000,
-    now: () => briefedBase + (Date.now() - bootReal),
     briefing,
     diversion: { maxRangeNm: 1000, limit: 6 },
   });

@@ -50,26 +50,29 @@ function buildCruise(s: HudState): HudContainer[] {
   const alt = pos ? `GPSALT ${formatFeet(pos.altitudeM)}` : 'GPSALT -----';
 
   const wpt = g?.activeWaypoint
-    ? `→ ${g.activeWaypoint.ident}   BRG ${formatDeg(g.bearingToActiveDeg)}   ` +
-      `${formatNm(g.distToActiveNm)} NM   ETE ${formatDuration(g.eteToActiveSec)}`
-    : '→ ----   BRG ---   --- NM   ETE --:--';
+    ? `→ ${g.activeWaypoint.ident}   ${formatDeg(g.bearingToActiveDeg)}   ` +
+      `${formatNm(g.distToActiveNm)} NM   ${formatDuration(g.eteToActiveSec)}`
+    : '→ ----   ---   --- NM';
 
   const dest = s.plan.destination
     ? `DEST ${s.plan.destination.ident}   ${formatNm(g?.distToDestNm ?? null)} NM   ` +
       `ETA ${etaUtc(s.now, g?.eteToDestSec ?? null)}`
     : 'DEST ----';
 
+  // Layout: the three primaries sit on the TOP line, a thin status line beneath
+  // them, then the centre of the display is left CLEAR (least obstructive in
+  // flight) with nav parked at the bottom edge. Alternates are their own page.
   return [
-    { id: 1, x: MARGIN, y: 10, w: 150, h: ROW_H, text: clock },
-    { id: 2, x: 200, y: 10, w: 140, h: ROW_H, text: `ET ${elapsed}` },
-    { id: 3, x: 350, y: 10, w: RIGHT - 350, h: ROW_H, text: status },
+    { id: 4, x: MARGIN, y: 8, w: 180, h: 34, text: gs },
+    { id: 5, x: 210, y: 8, w: 170, h: 34, text: trk },
+    { id: 6, x: 384, y: 8, w: RIGHT - 384, h: 34, text: alt },
 
-    { id: 4, x: MARGIN, y: 92, w: 180, h: 34, text: gs },
-    { id: 5, x: 210, y: 92, w: 170, h: 34, text: trk },
-    { id: 6, x: 384, y: 92, w: RIGHT - 384, h: 34, text: alt },
+    { id: 1, x: MARGIN, y: 46, w: 150, h: ROW_H, text: clock },
+    { id: 2, x: 210, y: 46, w: 140, h: ROW_H, text: `ET ${elapsed}` },
+    { id: 3, x: 384, y: 46, w: RIGHT - 384, h: ROW_H, text: status },
 
-    { id: 7, x: MARGIN, y: 168, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: wpt },
-    { id: 8, x: MARGIN, y: 228, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: dest },
+    { id: 7, x: MARGIN, y: 224, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: wpt },
+    { id: 8, x: MARGIN, y: 256, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: dest },
   ];
 }
 
@@ -241,6 +244,7 @@ function statusText(s: HudState): string {
   // ASCII only — the G2 firmware font has no check/cross glyphs (U+2713/U+2717).
   if (!s.position) return 'NO GPS';
   const acc = s.position.accuracyM != null ? ` ${Math.round(s.position.accuracyM)}m` : '';
-  const bat = s.device.batteryLevel != null ? ` ${s.device.batteryLevel}%` : '';
+  // Only show battery once the device actually reports it (avoid a bogus "0%").
+  const bat = s.device.batteryLevel ? ` BAT ${s.device.batteryLevel}%` : '';
   return `GPS${acc}${bat}`;
 }
