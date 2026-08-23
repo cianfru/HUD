@@ -9,12 +9,7 @@
 import { SCREEN_W } from '../bridge/bridge.js';
 import type { HudContainer } from '../bridge/bridge.js';
 import { formatKnots, formatDeg, formatFeet, formatNm } from '../core/units.js';
-import {
-  formatUtcClock,
-  formatLocalClock,
-  formatDuration,
-  etaUtc,
-} from '../core/time.js';
+import { formatUtcClock, formatLocalClock, formatDuration } from '../core/time.js';
 import { distanceNm } from '../core/geo.js';
 import type { HudView, HudState } from './model.js';
 
@@ -42,37 +37,30 @@ function buildCruise(s: HudState): HudContainer[] {
   const g = s.guidance;
 
   const clock = s.config.clock === 'utc' ? formatUtcClock(s.now) + 'Z' : formatLocalClock(s.now);
-  const elapsed = formatDuration((s.now.getTime() - s.flightStartMs) / 1000);
-  const status = statusText(s);
 
   const gs = pos ? `GS ${formatKnots(pos.speedMps)}` : 'GS ---';
   const trk = pos ? `TRK ${formatDeg(pos.trackDeg)}` : 'TRK ---';
   const alt = pos ? `GPSALT ${formatFeet(pos.altitudeM)}` : 'GPSALT -----';
 
-  const wpt = g?.activeWaypoint
-    ? `→ ${g.activeWaypoint.ident}   ${formatDeg(g.bearingToActiveDeg)}   ` +
-      `${formatNm(g.distToActiveNm)} NM   ${formatDuration(g.eteToActiveSec)}`
-    : '→ ----   ---   --- NM';
+  // Next waypoint, compact — or NO GPS on the exception, so status only shows
+  // when it matters (no permanent GPS/battery clutter).
+  const nav = !pos
+    ? 'NO GPS'
+    : g?.activeWaypoint
+      ? `→ ${g.activeWaypoint.ident}  ${formatDeg(g.bearingToActiveDeg)}  ${formatNm(g.distToActiveNm)}NM`
+      : '→ ----';
 
-  const dest = s.plan.destination
-    ? `DEST ${s.plan.destination.ident}   ${formatNm(g?.distToDestNm ?? null)} NM   ` +
-      `ETA ${etaUtc(s.now, g?.eteToDestSec ?? null)}`
-    : 'DEST ----';
-
-  // Layout: the three primaries sit on the TOP line, a thin status line beneath
-  // them, then the centre of the display is left CLEAR (least obstructive in
-  // flight) with nav parked at the bottom edge. Alternates are their own page.
+  // Minimal: the three primaries on the very TOP edge, one thin line (UTC + next
+  // waypoint) on the very BOTTOM edge, the whole centre left CLEAR of central
+  // vision. Destination/ETE and elapsed live on the ROUTE page, alternates on
+  // DIVERT — CRUISE stays to a few glanceable details.
   return [
-    { id: 4, x: MARGIN, y: 8, w: 180, h: 34, text: gs },
-    { id: 5, x: 210, y: 8, w: 170, h: 34, text: trk },
-    { id: 6, x: 384, y: 8, w: RIGHT - 384, h: 34, text: alt },
+    { id: 4, x: MARGIN, y: 6, w: 180, h: 34, text: gs },
+    { id: 5, x: 210, y: 6, w: 170, h: 34, text: trk },
+    { id: 6, x: 384, y: 6, w: RIGHT - 384, h: 34, text: alt },
 
-    { id: 1, x: MARGIN, y: 46, w: 150, h: ROW_H, text: clock },
-    { id: 2, x: 210, y: 46, w: 140, h: ROW_H, text: `ET ${elapsed}` },
-    { id: 3, x: 384, y: 46, w: RIGHT - 384, h: ROW_H, text: status },
-
-    { id: 7, x: MARGIN, y: 224, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: wpt },
-    { id: 8, x: MARGIN, y: 256, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: dest },
+    { id: 1, x: MARGIN, y: 258, w: 130, h: ROW_H, text: clock },
+    { id: 7, x: 200, y: 258, w: SCREEN_W - 200 - MARGIN, h: ROW_H, text: nav },
   ];
 }
 
@@ -238,13 +226,4 @@ function buildSettings(s: HudState): HudContainer[] {
     h: ROW_H,
     text,
   }));
-}
-
-function statusText(s: HudState): string {
-  // ASCII only — the G2 firmware font has no check/cross glyphs (U+2713/U+2717).
-  if (!s.position) return 'NO GPS';
-  const acc = s.position.accuracyM != null ? ` ${Math.round(s.position.accuracyM)}m` : '';
-  // Only show battery once the device actually reports it (avoid a bogus "0%").
-  const bat = s.device.batteryLevel ? ` BAT ${s.device.batteryLevel}%` : '';
-  return `GPS${acc}${bat}`;
 }
