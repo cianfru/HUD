@@ -130,8 +130,12 @@ export class HudController {
   // double-press ascends. `divertSelection` is the cursor over the alternates.
   private focus: HudFocus = 'page';
   private divertSelection = 0;
+  private settingsSelection = 0;
   private lastAltCount = 0;
   private criticalPhase = false;
+
+  /** Toggleable settings, in list order — label is rendered by the view. */
+  private static readonly SETTINGS_COUNT = 2;
 
   /**
    * The CRUISE page declutters to GS only unless the aircraft is clearly in
@@ -159,22 +163,34 @@ export class HudController {
       this.cycleView(dir);
       return;
     }
-    // Inside DIVERT's list or a field's detail: move the cursor, clamped.
+    // Inside a page's list: move the cursor, clamped to that list's length.
     if (this.view === 'DIVERT' && this.lastAltCount > 0) {
-      this.divertSelection = Math.max(0, Math.min(this.lastAltCount - 1, this.divertSelection + dir));
+      this.divertSelection = clamp(this.divertSelection + dir, 0, this.lastAltCount - 1);
+    } else if (this.view === 'SETTINGS') {
+      this.settingsSelection = clamp(this.settingsSelection + dir, 0, HudController.SETTINGS_COUNT - 1);
     }
   }
 
-  // Tap = descend: enter a page's list, then open the selected item's detail.
-  // Pages with no deeper level (CRUISE, DEST) do their own primary action or
-  // nothing; SETTINGS toggles auto-sequence in place.
+  // Tap = descend: enter a page's list, then activate the selected item —
+  // opening a field's weather on DIVERT, or toggling the setting on SETTINGS.
+  // Pages with no deeper level (CRUISE, DEST) do nothing.
   private onPress(): void {
     if (this.focus === 'page') {
       if (this.view === 'DIVERT' && this.lastAltCount > 0) this.focus = 'list';
-      else if (this.view === 'SETTINGS') this.config.autoSequence = !this.config.autoSequence;
+      else if (this.view === 'SETTINGS') this.focus = 'list';
       return;
     }
     if (this.view === 'DIVERT' && this.focus === 'list') this.focus = 'detail';
+    else if (this.view === 'SETTINGS' && this.focus === 'list') this.toggleSetting();
+  }
+
+  /** Toggle the highlighted setting (0 = clock UTC/local, 1 = auto-sequence). */
+  private toggleSetting(): void {
+    if (this.settingsSelection === 0) {
+      this.config.clock = this.config.clock === 'utc' ? 'local' : 'utc';
+    } else {
+      this.config.autoSequence = !this.config.autoSequence;
+    }
   }
 
   // Double-tap = ascend: detail -> list -> page. At the page carousel there is
@@ -189,9 +205,10 @@ export class HudController {
     const i = VIEW_ORDER.indexOf(this.view);
     const n = VIEW_ORDER.length;
     this.view = VIEW_ORDER[(i + dir + n) % n]!;
-    // Changing page always returns to the page level with a fresh cursor.
+    // Changing page always returns to the page level with fresh cursors.
     this.focus = 'page';
     this.divertSelection = 0;
+    this.settingsSelection = 0;
   }
 
   // --- output ---
@@ -268,6 +285,7 @@ export class HudController {
       criticalPhase: this.criticalPhase,
       focus: this.focus,
       divertSelection: sel,
+      settingsSelection: this.settingsSelection,
       selectedWx,
       destWx,
     };
@@ -307,4 +325,9 @@ export class HudController {
     }));
     return { alternates, briefingAgeSec };
   }
+}
+
+/** Clamp `n` into the inclusive range [lo, hi]. */
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
 }

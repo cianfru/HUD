@@ -226,14 +226,22 @@ function buildDest(s: HudState): HudContainer[] {
 
 // --- SETTINGS ------------------------------------------------------------
 
+// SETTINGS drills in the same way as DIVERT: tap enters the selectable list,
+// swipe moves the cursor, tap toggles the highlighted setting, double-tap backs
+// out. The '>' cursor and TAP=toggle hint appear only once entered.
 function buildSettings(s: HudState): HudContainer[] {
-  const lines = [
-    'SETTINGS',
-    `Clock:     ${s.config.clock.toUpperCase()}   (double-tap at a page to toggle)`,
-    `Auto-seq:  ${s.config.autoSequence ? 'ON' : 'OFF'}   (tap here to toggle)`,
-    'Swipe: CRUISE - DIVERT - DEST - SETTINGS',
-    'DIVERT: tap to open the list, tap a field for its weather',
+  const entered = s.focus !== 'page';
+  const mode = entered ? 'DBL=back  TAP=toggle' : 'TAP=open';
+  const items = [
+    `Clock     ${s.config.clock.toUpperCase()}`,
+    `Auto-seq  ${s.config.autoSequence ? 'ON' : 'OFF'}`,
   ];
+  const lines: string[] = [`SETTINGS   ${mode}`];
+  items.forEach((it, i) => {
+    const marker = entered && i === s.settingsSelection ? '>' : ' ';
+    lines.push(`${marker}${it}`);
+  });
+  lines.push('Swipe: CRUISE - DIVERT - DEST - SETTINGS');
   return lines.map((text, i) => ({
     id: 1 + i,
     x: MARGIN,

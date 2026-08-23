@@ -59,6 +59,8 @@ export interface HudState {
   focus: HudFocus;
   /** DIVERT list: index of the highlighted alternate (swipe moves it in 'list'). */
   divertSelection: number;
+  /** SETTINGS list: index of the highlighted setting (swipe moves it in 'list'). */
+  settingsSelection: number;
   /** The selected alternate's weather detail (raw METAR/TAF + per-check report). */
   selectedWx: {
     ident: string;

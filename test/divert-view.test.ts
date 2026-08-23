@@ -19,6 +19,7 @@ function baseState(over: Partial<HudState>): HudState {
     criticalPhase: false,
     focus: 'page',
     divertSelection: 0,
+    settingsSelection: 0,
     selectedWx: null,
     destWx: null,
     ...over,
