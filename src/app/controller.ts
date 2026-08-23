@@ -132,18 +132,20 @@ export class HudController {
   private criticalPhase = false;
 
   /**
-   * Critical phase = low AND moving — declutter to GS only, eyes outside.
-   * "Moving on the ground or low" covers taxi, take-off roll, approach and
-   * landing (all critical); full info returns only when STOPPED (parked, gs~0)
-   * or in cruise (above the height band). Hysteresis on both axes so GPS noise
-   * can't flicker it. GPS geometric altitude is a height proxy.
+   * The CRUISE page declutters to GS only unless the aircraft is clearly in
+   * cruise (high AND moving). So parked (gs~0), taxi, take-off, approach and
+   * landing all show just GS; only established cruise shows the full strip. This
+   * only affects the CRUISE page — every page stays reachable by swipe, so the
+   * alternates and their weather can be checked on the ground. Hysteresis so GPS
+   * noise can't flicker it; GPS geometric altitude is a height proxy (the `gs<30`
+   * arm also covers parking at a high-elevation field).
    */
   private updateCriticalPhase(): void {
     const h = this.position?.altitudeM != null ? metersToFeet(this.position.altitudeM) : null;
     if (h == null) return; // no height info — hold the last state
     const gsKt = this.position?.speedMps != null ? mpsToKnots(this.position.speedMps) : 0;
-    if (h < 1500 && gsKt > 5) this.criticalPhase = true; // taxi speed and up = critical
-    else if (h > 1700 || gsKt < 2) this.criticalPhase = false; // cruise, or stopped
+    if (h > 1700 && gsKt > 40) this.criticalPhase = false; // established cruise -> full
+    else if (h < 1500 || gsKt < 30) this.criticalPhase = true; // low or slow -> GS only
   }
 
   // Swipe: normally cycles pages. On DIVERT it moves the cursor through the
@@ -200,9 +202,9 @@ export class HudController {
 
   private draw(): void {
     this.updateCriticalPhase();
-    // Critical phase overrides page selection — always the decluttered CRUISE.
-    const view = this.criticalPhase ? 'CRUISE' : this.view;
-    this.renderer.render(view, this.snapshot());
+    // Declutter affects only the CRUISE page (GS-only); pages stay navigable so
+    // the alternates and their weather can be checked any time, incl. on ground.
+    this.renderer.render(this.view, this.snapshot());
   }
 
   private snapshot(): HudState {

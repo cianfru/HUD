@@ -43,6 +43,11 @@ async function fetchJson(url: string): Promise<unknown> {
 function json(body: unknown, status = 200, cache = 'no-store'): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': cache },
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': cache,
+      // The glasses app calls this cross-origin, so allow it to read the result.
+      'access-control-allow-origin': '*',
+    },
   });
 }

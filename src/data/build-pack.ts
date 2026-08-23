@@ -101,7 +101,21 @@ export async function packFromRoute(
   return { pack, adep: dep.toUpperCase(), ades: dest.toUpperCase() };
 }
 
-/** Fetch METAR/TAF via the same-origin /api/wx proxy and map to BriefingWx. */
+/**
+ * Fetch fresh METAR/TAF for a pack's fields and freeze it in — the "fetch latest
+ * weather before departure" step. Updates createdAt so age/validity reset. Runs
+ * on the ground (needs connectivity); the result is what you consult in flight.
+ */
+export async function refreshWeather(
+  pack: BriefingPack,
+  wxBase: string,
+  at: Date = new Date(),
+): Promise<BriefingPack> {
+  const weather = await fetchWeather(wxBase, pack.airports.map((a) => a.ident));
+  return { ...pack, createdAt: at.toISOString(), weather };
+}
+
+/** Fetch METAR/TAF via the /api/wx proxy and map to BriefingWx. */
 async function fetchWeather(wxBase: string, idents: string[]): Promise<BriefingWx[]> {
   const url = `${wxBase.replace(/\/$/, '')}/api/wx?ids=${idents.join(',')}`;
   const r = await fetch(url);

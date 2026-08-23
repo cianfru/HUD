@@ -22,7 +22,7 @@ import { DEMO_ROUTE_STRING, AIRPORTS } from '../data/navdata.js';
 import { BriefingStore } from '../data/briefing.js';
 import type { BriefingPack } from '../data/briefing.js';
 import { DEMO_BRIEFING } from '../data/briefing-demo.js';
-import { packFromOfp, packFromRoute } from '../data/build-pack.js';
+import { packFromOfp, packFromRoute, refreshWeather } from '../data/build-pack.js';
 import type { Waypoint } from '../core/types.js';
 
 const FLIGHT_KEY = 'glasses.flight';
@@ -78,12 +78,21 @@ function routeWaypoints(store: BriefingStore, adep?: string, ades?: string): Way
 
 function updateLoaded(): void {
   const el = document.getElementById('loaded');
-  if (!el) return;
+  const age = document.getElementById('wxage');
   const f = loadFlight();
-  el.textContent = f
-    ? `Flying ${f.adep ?? '?'} → ${f.ades ?? '?'}  (${f.pack.airports.length} fields, ` +
-      `${f.pack.weather.filter((w) => w.tafRaw).length} TAFs)`
-    : 'no flight set — flying the demo';
+  if (el)
+    el.textContent = f
+      ? `Flying ${f.adep ?? '?'} → ${f.ades ?? '?'}  (${f.pack.airports.length} fields, ` +
+        `${f.pack.weather.filter((w) => w.tafRaw).length} TAFs)`
+      : 'no flight set — flying the demo';
+  if (age) {
+    if (!f) age.textContent = '';
+    else {
+      const mins = Math.round((Date.now() - new Date(f.pack.createdAt).getTime()) / 60000);
+      const withWx = f.pack.weather.filter((w) => w.tafRaw || w.metarRaw).length;
+      age.textContent = `weather: ${withWx}/${f.pack.airports.length} fields · ${mins} min old`;
+    }
+  }
 }
 
 function buildFromOfpText(text: string): void {
@@ -137,6 +146,22 @@ function wireForm(): void {
       saveAndReload(flight);
     } catch (e) {
       msg('could not build that route: ' + String(e));
+    }
+  });
+
+  // Freeze fresh weather into the loaded flight (press before departure).
+  document.getElementById('fetch-wx')?.addEventListener('click', async () => {
+    const f = loadFlight();
+    if (!f) return msg('set a flight first');
+    msg('fetching latest weather…');
+    try {
+      const pack = await refreshWeather(f.pack, WX_BASE);
+      const n = pack.weather.filter((w) => w.tafRaw || w.metarRaw).length;
+      if (n === 0) return msg('weather fetch returned nothing (check connection)');
+      msg(`weather updated: ${n}/${pack.airports.length} fields — loading…`);
+      saveAndReload({ ...f, pack });
+    } catch (e) {
+      msg('weather fetch failed: ' + String(e));
     }
   });
 
