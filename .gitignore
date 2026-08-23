@@ -15,3 +15,6 @@ briefing/
 
 # Airline-internal sim/OFP working files — never commit
 content/
+
+# Even Hub app packages (build artifacts)
+*.ehpk

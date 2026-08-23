@@ -24,7 +24,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "briefing": "node scripts/build-briefing.mjs",
-    "ofp": "tsx scripts/parse-ofp.mjs"
+    "ofp": "tsx scripts/parse-ofp.mjs",
+    "pack:glasses": "npm run build:glasses && evenhub pack app.json dist-glasses -o g2-aviation-hud.ehpk"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.13"

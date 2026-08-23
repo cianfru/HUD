@@ -7,6 +7,9 @@ import { resolve } from 'node:path';
 export default defineConfig({
   root: 'src/glasses',
   publicDir: false,
+  // Relative asset paths so the built bundle works inside an .ehpk package
+  // (mounted at an arbitrary path in the Even WebView), not just at a URL root.
+  base: './',
   build: {
     outDir: resolve(__dirname, 'dist-glasses'),
     emptyOutDir: true,
