@@ -26,8 +26,8 @@ import { packFromOfp, packFromRoute, refreshWeather } from '../data/build-pack.j
 import type { Waypoint } from '../core/types.js';
 
 const FLIGHT_KEY = 'glasses.flight';
-// Weather proxy for the typed-route path (same functions the mobile MVP deploys).
-const WX_BASE = 'https://g2-aviation-hud.vercel.app';
+// Weather proxy for the typed-route path (CORS-enabled so the WebView can read it).
+const WX_BASE = 'https://g2-hud-wx-cianfrus-projects.vercel.app';
 
 interface StoredFlight {
   pack: BriefingPack;

@@ -14,7 +14,7 @@
     {
       "name": "network",
       "desc": "Fetches live METAR/TAF when you build a flight by typing dep/dest (the OFP paste path needs no network).",
-      "whitelist": ["https://g2-aviation-hud.vercel.app"]
+      "whitelist": ["https://g2-hud-wx-cianfrus-projects.vercel.app"]
     }
   ],
   "supported_languages": ["en"]
