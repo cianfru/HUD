@@ -3,8 +3,25 @@ import {
   eteSeconds,
   formatDuration,
   etaUtc,
+  etaLocal,
   formatUtcClock,
 } from '../src/core/time.js';
+
+describe('etaLocal', () => {
+  const now = new Date(Date.UTC(2026, 7, 5, 5, 30, 0)); // 05:30Z
+  it('adds the UTC offset for destination local time', () => {
+    // 05:30Z + 4h ETE = 09:30Z; Dubai +240 min -> 13:30 LT.
+    expect(etaLocal(now, 4 * 3600, 240)).toBe('13:30LT');
+  });
+  it('wraps past midnight', () => {
+    // 05:30Z + 20h = 01:30Z next day; +240 -> 05:30 LT.
+    expect(etaLocal(now, 20 * 3600, 240)).toBe('05:30LT');
+  });
+  it('is unknown without an offset or ETE', () => {
+    expect(etaLocal(now, 3600, undefined)).toBe('--:--LT');
+    expect(etaLocal(now, null, 240)).toBe('--:--LT');
+  });
+});
 
 describe('eteSeconds', () => {
   it('120 nm at 480 kt is 15 minutes', () => {

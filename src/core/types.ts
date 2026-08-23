@@ -16,6 +16,12 @@ export interface Waypoint extends LatLon {
   name?: string;
   /** Classification, used only for display/search grouping. */
   kind?: 'airport' | 'fix' | 'vor' | 'ndb' | 'user';
+  /**
+   * UTC offset in minutes for local-time display (e.g. arrival LT for a PA).
+   * Standard offset — DST is not modelled here; a real pack would carry the
+   * offset in effect on arrival (e.g. from the OFP).
+   */
+  utcOffsetMin?: number;
 }
 
 /**

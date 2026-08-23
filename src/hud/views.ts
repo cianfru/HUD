@@ -9,7 +9,7 @@
 import { SCREEN_W } from '../bridge/bridge.js';
 import type { HudContainer } from '../bridge/bridge.js';
 import { formatKnots, formatDeg, formatFeet, formatNm } from '../core/units.js';
-import { formatUtcClock, formatLocalClock, formatDuration } from '../core/time.js';
+import { formatUtcClock, formatLocalClock, formatDuration, etaLocal } from '../core/time.js';
 import { distanceNm } from '../core/geo.js';
 import type { HudView, HudState } from './model.js';
 
@@ -50,17 +50,24 @@ function buildCruise(s: HudState): HudContainer[] {
       ? `→ ${g.activeWaypoint.ident}  ${formatDeg(g.bearingToActiveDeg)}  ${formatNm(g.distToActiveNm)}NM`
       : '→ ----';
 
-  // Minimal: the three primaries on the very TOP edge, one thin line (UTC + next
-  // waypoint) on the very BOTTOM edge, the whole centre left CLEAR of central
-  // vision. Destination/ETE and elapsed live on the ROUTE page, alternates on
-  // DIVERT — CRUISE stays to a few glanceable details.
+  // Destination arrival in LOCAL time (for the pax PA), from the field's UTC
+  // offset. Shows --:--LT when the offset or ETE isn't known.
+  const dest = s.plan.destination;
+  const destEta = dest
+    ? `${dest.ident} ${etaLocal(s.now, g?.eteToDestSec ?? null, dest.utcOffsetMin)}`
+    : '';
+
+  // Everything is kept in the TOP band — the lower part of the display obstructs
+  // the forward view, so it stays completely clear. Two lines: primaries, then a
+  // thin status line (UTC · next waypoint · destination arrival LT).
   return [
     { id: 4, x: MARGIN, y: 6, w: 180, h: 34, text: gs },
     { id: 5, x: 210, y: 6, w: 170, h: 34, text: trk },
     { id: 6, x: 384, y: 6, w: RIGHT - 384, h: 34, text: alt },
 
-    { id: 1, x: MARGIN, y: 258, w: 130, h: ROW_H, text: clock },
-    { id: 7, x: 200, y: 258, w: SCREEN_W - 200 - MARGIN, h: ROW_H, text: nav },
+    { id: 1, x: MARGIN, y: 44, w: 110, h: ROW_H, text: clock },
+    { id: 7, x: 132, y: 44, w: 250, h: ROW_H, text: nav },
+    { id: 8, x: 392, y: 44, w: RIGHT - 392, h: ROW_H, text: destEta },
   ];
 }
 

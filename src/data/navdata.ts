@@ -10,18 +10,21 @@
 import type { Waypoint } from '../core/types.js';
 
 /** A handful of real airports (ICAO), by reference point. Extend as needed. */
+// utcOffsetMin: standard offset (no DST modelled). The Gulf/Turkey/Oman entries
+// observe no DST so they are exact; DST-observing fields are left without one
+// (arrival LT then shows --:--) rather than displayed wrong.
 export const AIRPORTS: Record<string, Waypoint> = {
-  OTHH: { ident: 'OTHH', name: 'Doha / Hamad Intl', lat: 25.2731, lon: 51.6081, kind: 'airport' },
-  OMDB: { ident: 'OMDB', name: 'Dubai Intl', lat: 25.2528, lon: 55.3644, kind: 'airport' },
-  OMDW: { ident: 'OMDW', name: 'Dubai / Al Maktoum', lat: 24.8968, lon: 55.1614, kind: 'airport' },
-  OMSJ: { ident: 'OMSJ', name: 'Sharjah Intl', lat: 25.3286, lon: 55.5172, kind: 'airport' },
-  OMFJ: { ident: 'OMFJ', name: 'Fujairah Intl', lat: 25.1122, lon: 56.324, kind: 'airport' },
-  OMAA: { ident: 'OMAA', name: 'Abu Dhabi Intl', lat: 24.433, lon: 54.6511, kind: 'airport' },
-  OBBI: { ident: 'OBBI', name: 'Bahrain Intl', lat: 26.2708, lon: 50.6336, kind: 'airport' },
-  OKBK: { ident: 'OKBK', name: 'Kuwait Intl', lat: 29.2266, lon: 47.9689, kind: 'airport' },
-  OEDF: { ident: 'OEDF', name: 'Dammam / King Fahd', lat: 26.4712, lon: 49.7979, kind: 'airport' },
-  OOMS: { ident: 'OOMS', name: 'Muscat Intl', lat: 23.5933, lon: 58.2844, kind: 'airport' },
-  LTFM: { ident: 'LTFM', name: 'Istanbul', lat: 41.2753, lon: 28.7519, kind: 'airport' },
+  OTHH: { ident: 'OTHH', name: 'Doha / Hamad Intl', lat: 25.2731, lon: 51.6081, kind: 'airport', utcOffsetMin: 180 },
+  OMDB: { ident: 'OMDB', name: 'Dubai Intl', lat: 25.2528, lon: 55.3644, kind: 'airport', utcOffsetMin: 240 },
+  OMDW: { ident: 'OMDW', name: 'Dubai / Al Maktoum', lat: 24.8968, lon: 55.1614, kind: 'airport', utcOffsetMin: 240 },
+  OMSJ: { ident: 'OMSJ', name: 'Sharjah Intl', lat: 25.3286, lon: 55.5172, kind: 'airport', utcOffsetMin: 240 },
+  OMFJ: { ident: 'OMFJ', name: 'Fujairah Intl', lat: 25.1122, lon: 56.324, kind: 'airport', utcOffsetMin: 240 },
+  OMAA: { ident: 'OMAA', name: 'Abu Dhabi Intl', lat: 24.433, lon: 54.6511, kind: 'airport', utcOffsetMin: 240 },
+  OBBI: { ident: 'OBBI', name: 'Bahrain Intl', lat: 26.2708, lon: 50.6336, kind: 'airport', utcOffsetMin: 180 },
+  OKBK: { ident: 'OKBK', name: 'Kuwait Intl', lat: 29.2266, lon: 47.9689, kind: 'airport', utcOffsetMin: 180 },
+  OEDF: { ident: 'OEDF', name: 'Dammam / King Fahd', lat: 26.4712, lon: 49.7979, kind: 'airport', utcOffsetMin: 180 },
+  OOMS: { ident: 'OOMS', name: 'Muscat Intl', lat: 23.5933, lon: 58.2844, kind: 'airport', utcOffsetMin: 240 },
+  LTFM: { ident: 'LTFM', name: 'Istanbul', lat: 41.2753, lon: 28.7519, kind: 'airport', utcOffsetMin: 180 },
   HECA: { ident: 'HECA', name: 'Cairo Intl', lat: 30.1219, lon: 31.4056, kind: 'airport' },
   EGLL: { ident: 'EGLL', name: 'London / Heathrow', lat: 51.47, lon: -0.4543, kind: 'airport' },
 };

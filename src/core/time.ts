@@ -46,6 +46,22 @@ export function etaUtc(now: Date, eteSec: number | null): string {
   return `${pad2(eta.getUTCHours())}:${pad2(eta.getUTCMinutes())}Z`;
 }
 
+/**
+ * ETA at a destination whose UTC offset is `offsetMin`, as "HH:MMLT" (local
+ * wall-clock) — for passenger-announcement / arrival time. Returns "--:--LT"
+ * when the ETE or the offset is unknown. DST is the caller's problem: the offset
+ * must already be the one in effect on arrival.
+ */
+export function etaLocal(
+  now: Date,
+  eteSec: number | null,
+  offsetMin: number | null | undefined,
+): string {
+  if (eteSec == null || !Number.isFinite(eteSec) || offsetMin == null) return '--:--LT';
+  const eta = new Date(now.getTime() + eteSec * 1000 + offsetMin * 60_000);
+  return `${pad2(eta.getUTCHours())}:${pad2(eta.getUTCMinutes())}LT`;
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
