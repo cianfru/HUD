@@ -118,13 +118,17 @@ export class HudController {
         this.onPress();
         break;
       case 'doublePress':
-        this.config.clock = this.config.clock === 'utc' ? 'local' : 'utc';
+        this.onDoublePress();
         break;
     }
     this.draw();
   }
 
-  private divertDetail = false;
+  // DIVERT drill-down: a selection cursor over the listed alternates, and an
+  // expanded state showing the selected field's raw METAR/TAF.
+  private divertSelection = 0;
+  private divertExpanded = false;
+  private lastAltCount = 0;
   private criticalPhase = false;
 
   /**
@@ -139,13 +143,24 @@ export class HudController {
     else if (h > 1700) this.criticalPhase = false;
   }
 
+  // Press: on DIVERT, step the selection cursor through the listed alternates;
+  // elsewhere, the page's context action.
   private onPress(): void {
-    if (this.view === 'CRUISE') {
+    if (this.view === 'DIVERT') {
+      if (this.lastAltCount > 0) this.divertSelection = (this.divertSelection + 1) % this.lastAltCount;
+    } else if (this.view === 'CRUISE') {
       this.plan.next();
-    } else if (this.view === 'DIVERT') {
-      this.divertDetail = !this.divertDetail; // show/hide the best field's reasons
     } else if (this.view === 'SETTINGS') {
       this.config.autoSequence = !this.config.autoSequence;
+    }
+  }
+
+  // Double-press: on DIVERT, expand/collapse the selected field's weather.
+  private onDoublePress(): void {
+    if (this.view === 'DIVERT') {
+      this.divertExpanded = !this.divertExpanded;
+    } else {
+      this.config.clock = this.config.clock === 'utc' ? 'local' : 'utc';
     }
   }
 
@@ -169,7 +184,6 @@ export class HudController {
     const guidance = this.position ? this.plan.guidance(this.position) : null;
     const { alternates, briefingAgeSec } = this.computeDiversion(now);
     const best = alternates?.find((a) => a.best) ?? alternates?.[0];
-    const report = this.briefing && best ? this.briefing.report(best.waypoint.ident, now, this.diversion.reasons) : null;
     const cat = this.briefing && best ? this.briefing.assess(best.waypoint.ident, now)?.category : null;
     const closestAlternate =
       this.briefing && best
@@ -181,6 +195,23 @@ export class HudController {
             wx: vmcImc(cat),
           }
         : null;
+
+    // DIVERT drill-down: clamp the cursor to what's shown (max 4), and gather the
+    // selected field's raw METAR/TAF + per-check report for the expanded card.
+    const shown = Math.min(4, alternates?.length ?? 0);
+    this.lastAltCount = shown;
+    const sel = shown ? this.divertSelection % shown : 0;
+    const selAlt = alternates?.[sel];
+    const selectedWx =
+      this.briefing && selAlt
+        ? {
+            ident: selAlt.waypoint.ident,
+            report: this.briefing.report(selAlt.waypoint.ident, now, this.diversion.reasons)!,
+            metarRaw: this.briefing.metarRaw(selAlt.waypoint.ident),
+            tafRaw: this.briefing.tafRaw(selAlt.waypoint.ident),
+          }
+        : null;
+
     return {
       now,
       position: this.position,
@@ -193,8 +224,9 @@ export class HudController {
       briefingAgeSec,
       closestAlternate,
       criticalPhase: this.criticalPhase,
-      divertDetail: this.divertDetail,
-      bestReport: best && report ? { ident: best.waypoint.ident, report } : null,
+      divertSelection: sel,
+      divertExpanded: this.divertExpanded,
+      selectedWx,
     };
   }
 

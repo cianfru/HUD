@@ -46,8 +46,15 @@ export interface HudState {
   } | null;
   /** Critical phase (below ~1500 ft): the HUD declutters to GS only. */
   criticalPhase: boolean;
-  /** When true, the DIVERT page shows the best field's per-check reasons. */
-  divertDetail: boolean;
-  /** Transparent suitability for the best alternate (for the detail card). */
-  bestReport: { ident: string; report: SuitabilityReport } | null;
+  /** DIVERT list: index of the highlighted alternate (press cycles it). */
+  divertSelection: number;
+  /** DIVERT: when true, show the selected alternate's raw METAR/TAF card. */
+  divertExpanded: boolean;
+  /** The selected alternate's weather detail (raw METAR/TAF + per-check report). */
+  selectedWx: {
+    ident: string;
+    report: SuitabilityReport;
+    metarRaw?: string;
+    tafRaw?: string;
+  } | null;
 }

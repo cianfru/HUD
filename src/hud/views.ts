@@ -84,9 +84,9 @@ function buildCruise(s: HudState): HudContainer[] {
 function buildDivert(s: HudState): HudContainer[] {
   const W = SCREEN_W - 2 * MARGIN;
 
-  // Detail mode: the best field's per-check reasons (press toggles it).
-  if (s.divertDetail && s.bestReport) {
-    return buildDivertDetail(s);
+  // Expanded: the selected field's raw METAR/TAF (double-press toggles it).
+  if (s.divertExpanded && s.selectedWx) {
+    return buildDivertWx(s);
   }
 
   // No pack, or a pack but no fix yet — say which, don't show a blank page.
@@ -114,10 +114,11 @@ function buildDivert(s: HudState): HudContainer[] {
     return containers;
   }
 
-  // The 4 most suitable, each with runway in use and VMC/IMC.
+  // The 4 most suitable, each with runway in use and VMC/IMC. '>' marks the
+  // selected field (press cycles it; double-press expands its weather).
   let row = 0;
   for (const a of s.alternates.slice(0, 4)) {
-    const marker = a.best ? '*' : ' ';
+    const marker = row === s.divertSelection ? '>' : ' ';
     const rel = formatRelBrg(a.relBearingDeg);
     const dist = `${formatNm(a.distanceNm)}NM`;
     const rwy = a.runway ? `RW${a.runway}` : 'RW--';
@@ -135,26 +136,22 @@ function buildDivert(s: HudState): HudContainer[] {
   return containers;
 }
 
-// Detail card: WHY the best field is GO/CAUTION/NOGO — one line per check.
-function buildDivertDetail(s: HudState): HudContainer[] {
+// Expanded card: the selected alternate's latest weather — raw METAR + TAF,
+// with the go/no-go verdict. The actual observation/forecast, not just OK/not OK.
+function buildDivertWx(s: HudState): HudContainer[] {
   const W = SCREEN_W - 2 * MARGIN;
-  const { ident, report } = s.bestReport!;
-  const containers: HudContainer[] = [
-    { id: 1, x: MARGIN, y: 8, w: W, h: ROW_H, text: `${ident}   ${report.verdict}` },
-  ];
-  // ASCII status marks — the firmware font has no check/cross glyphs.
-  const mark: Record<string, string> = { pass: 'OK', fail: 'XX', unknown: '--' };
-  report.checks.slice(0, 6).forEach((c, i) => {
-    containers.push({
-      id: 2 + i,
-      x: MARGIN,
-      y: 42 + i * 30,
-      w: W,
-      h: ROW_H,
-      text: `${c.label.padEnd(3)} ${mark[c.status]}  ${c.detail}`,
-    });
-  });
-  return containers;
+  const { ident, report, metarRaw, tafRaw } = s.selectedWx!;
+  const lines: string[] = [`${ident}   ${report.verdict}   PACK ${formatAge(s.briefingAgeSec)}`];
+  lines.push(...(metarRaw ? wrap('M ' + metarRaw, 2) : ['M  no METAR']));
+  lines.push(...(tafRaw ? wrap('T ' + tafRaw, 4) : ['T  no TAF']));
+  return lines.slice(0, 8).map((text, i) => ({
+    id: i + 1,
+    x: MARGIN,
+    y: 8 + i * 30,
+    w: W,
+    h: ROW_H,
+    text,
+  }));
 }
 
 /** Track-relative bearing as e.g. "L045" / "R120" / "AHD ". + relBearing = right. */
@@ -163,6 +160,24 @@ function formatRelBrg(rel: number): string {
   if (Math.abs(r) < 3) return 'AHD ';
   const side = r > 0 ? 'R' : 'L';
   return side + String(Math.abs(r)).padStart(3, '0');
+}
+
+/** Greedy word-wrap into at most `maxLines`, continuation lines indented. */
+function wrap(text: string, maxLines: number, width = 46): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    if (cur && (cur + ' ' + w).length > width) {
+      lines.push(lines.length ? '  ' + cur : cur);
+      cur = w;
+      if (lines.length >= maxLines) break;
+    } else {
+      cur = cur ? cur + ' ' + w : w;
+    }
+  }
+  if (cur && lines.length < maxLines) lines.push(lines.length ? '  ' + cur : cur);
+  return lines;
 }
 
 /** Pack age: "12m" under an hour, else "2h05". */

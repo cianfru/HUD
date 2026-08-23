@@ -17,8 +17,9 @@ function baseState(over: Partial<HudState>): HudState {
     briefingAgeSec: null,
     closestAlternate: null,
     criticalPhase: false,
-    divertDetail: false,
-    bestReport: null,
+    divertSelection: 0,
+    divertExpanded: false,
+    selectedWx: null,
     ...over,
   };
 }
@@ -83,7 +84,7 @@ describe('DIVERT view', () => {
     const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 720 }));
     expect(c[0]!.text).toMatch(/2 ENROUTE ALTN/);
     expect(c[0]!.text).toMatch(/PACK 12m/);
-    expect(c[1]!.text).toContain('*OMDB');
+    expect(c[1]!.text).toContain('>OMDB'); // selection cursor defaults to row 0
     expect(c[1]!.text).toContain('R030');
     expect(c[1]!.text).toContain('RW30');
     expect(c[1]!.text.trim().endsWith('V')).toBe(true);
@@ -92,24 +93,34 @@ describe('DIVERT view', () => {
     expect(c[2]!.text.trim().endsWith('I')).toBe(true);
   });
 
-  it('shows the best field per-check reasons in detail mode', () => {
-    const report = {
-      verdict: 'NOGO' as const,
-      checks: [
-        { key: 'runway' as const, label: 'RWY', status: 'pass' as const, severity: 'hard' as const, detail: '13124 ft >= 6562' },
-        { key: 'ceiling' as const, label: 'CIG', status: 'fail' as const, severity: 'hard' as const, detail: '800 ft < 1000' },
-        { key: 'crosswind' as const, label: 'XW', status: 'pass' as const, severity: 'advisory' as const, detail: '4 kt <= 38 (rwy 30)' },
-      ],
-      reasons: ['CIG: 800 ft < 1000'],
-    };
+  it('marks the selected alternate with a cursor', () => {
+    const alternates: Alternate[] = [
+      alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, best: true }),
+      alt({ waypoint: { ident: 'OOMS', lat: 23.6, lon: 58.3 }, distanceNm: 360 }),
+    ];
+    const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 60, divertSelection: 1 }));
+    expect(c[1]!.text.startsWith(' OMDB')).toBe(true); // not selected
+    expect(c[2]!.text.startsWith('>OOMS')).toBe(true); // cursor on OOMS
+  });
+
+  it('expands to the selected field raw METAR/TAF', () => {
+    const report = { verdict: 'GO' as const, checks: [], reasons: [] };
     const c = buildView(
       'DIVERT',
-      baseState({ divertDetail: true, bestReport: { ident: 'OMDB', report } }),
+      baseState({
+        briefingAgeSec: 60,
+        divertExpanded: true,
+        selectedWx: {
+          ident: 'OMDB',
+          report,
+          metarRaw: 'OMDB 231600Z 30012KT CAVOK 38/12 Q0998 NOSIG',
+          tafRaw: 'TAF OMDB 231100Z 2312/2418 31012KT CAVOK',
+        },
+      }),
     );
-    expect(c[0]!.text).toBe('OMDB   NOGO');
-    expect(c[1]!.text).toContain('RWY OK');
-    expect(c[2]!.text).toContain('CIG XX');
-    expect(c[2]!.text).toContain('800 ft < 1000');
+    expect(c[0]!.text).toMatch(/^OMDB   GO/);
+    expect(c.some((x) => x.text.includes('30012KT CAVOK'))).toBe(true); // raw METAR
+    expect(c.some((x) => x.text.includes('2312/2418'))).toBe(true); // raw TAF
   });
 
   it('shows the 4 most suitable (1 header + 4 rows)', () => {
