@@ -37,11 +37,16 @@
       <p id="status" class="status">initialising…</p>
 
       <div class="card">
-        <h2>Flight — paste OFP (offline)</h2>
-        <p class="muted">Paste your OFP text. Idents and weather come from the OFP; runways
-          and positions are built in. No connection needed.</p>
-        <textarea id="ofp" placeholder="Paste the full OFP text here…"></textarea>
-        <button id="build-ofp">Build from OFP &amp; fly</button>
+        <h2>Flight — drop the OFP (offline)</h2>
+        <p class="muted">Upload your OFP PDF (a few pages). Idents and weather are read from
+          it; runways and positions are built in. No connection needed.</p>
+        <input id="ofp-file" type="file" accept="application/pdf,.pdf" style="display:none" />
+        <button id="pick-pdf">Upload OFP PDF &amp; fly</button>
+        <details style="margin-top:10px">
+          <summary class="muted" style="cursor:pointer;font-size:11px">…or paste OFP text</summary>
+          <textarea id="ofp" placeholder="Paste the full OFP text here…" style="margin-top:8px"></textarea>
+          <button id="build-ofp" class="ghost">Build from pasted text</button>
+        </details>
       </div>
 
       <div class="card">

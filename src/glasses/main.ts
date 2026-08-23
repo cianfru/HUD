@@ -86,7 +86,31 @@ function updateLoaded(): void {
     : 'no flight set — flying the demo';
 }
 
+function buildFromOfpText(text: string): void {
+  if (text.trim().length < 20) return msg('no OFP text found');
+  const flight = packFromOfp(text);
+  if (!flight.pack.airports.length) return msg('no known airports found in that OFP');
+  msg(`built ${flight.adep ?? '?'} → ${flight.ades ?? '?'}, ${flight.pack.airports.length} fields — loading…`);
+  saveAndReload(flight);
+}
+
 function wireForm(): void {
+  // Drop-the-PDF path: read the OFP PDF in the WebView (pdf.js), then parse it.
+  const fileInput = document.getElementById('ofp-file') as HTMLInputElement | null;
+  document.getElementById('pick-pdf')?.addEventListener('click', () => fileInput?.click());
+  fileInput?.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    msg(`reading ${file.name}…`);
+    try {
+      const { pdfToText } = await import('./pdf-text.js');
+      const text = await pdfToText(await file.arrayBuffer());
+      buildFromOfpText(text);
+    } catch (e) {
+      msg('could not read that PDF: ' + String(e));
+    }
+  });
+
   document.getElementById('build-ofp')?.addEventListener('click', () => {
     const text = (document.getElementById('ofp') as HTMLTextAreaElement | null)?.value ?? '';
     if (text.trim().length < 20) return msg('paste the OFP text first');
