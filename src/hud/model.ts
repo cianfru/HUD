@@ -7,10 +7,19 @@ import type { Alternate } from '../core/diversion.js';
 import type { SuitabilityReport } from '../core/suitability.js';
 import type { DeviceState } from '../bridge/bridge.js';
 
-export type HudView = 'CRUISE' | 'DIVERT' | 'ROUTE' | 'SETTINGS';
+export type HudView = 'CRUISE' | 'DIVERT' | 'DEST' | 'SETTINGS';
 
-/** Views in swipe order. */
-export const VIEW_ORDER: HudView[] = ['CRUISE', 'DIVERT', 'ROUTE', 'SETTINGS'];
+/** Top-level pages, in swipe order. Swipe moves between these; tap drills in. */
+export const VIEW_ORDER: HudView[] = ['CRUISE', 'DIVERT', 'DEST', 'SETTINGS'];
+
+/**
+ * Navigation depth within the current page — the "leaves" of the structure:
+ *  - 'page'   : the page carousel; swipe changes page, tap drills in.
+ *  - 'list'   : inside a page's selectable list; swipe moves the cursor.
+ *  - 'detail' : a selected item's detail card (e.g. an alternate's METAR/TAF).
+ * Tap descends (page→list→detail); double-press ascends (detail→list→page).
+ */
+export type HudFocus = 'page' | 'list' | 'detail';
 
 export interface HudConfig {
   clock: 'utc' | 'local';
@@ -46,14 +55,28 @@ export interface HudState {
   } | null;
   /** Critical phase (below ~1500 ft): the HUD declutters to GS only. */
   criticalPhase: boolean;
-  /** DIVERT list: index of the highlighted alternate (press cycles it). */
+  /** Navigation depth within the current page (page carousel / list / detail). */
+  focus: HudFocus;
+  /** DIVERT list: index of the highlighted alternate (swipe moves it in 'list'). */
   divertSelection: number;
-  /** DIVERT: when true, show the selected alternate's raw METAR/TAF card. */
-  divertExpanded: boolean;
   /** The selected alternate's weather detail (raw METAR/TAF + per-check report). */
   selectedWx: {
     ident: string;
     report: SuitabilityReport;
+    metarRaw?: string;
+    tafRaw?: string;
+  } | null;
+  /**
+   * Destination weather for the DEST page: arrival local time, likely runway,
+   * VMC/IMC, the per-check report and the raw METAR/TAF. Null when there is no
+   * destination or no pack.
+   */
+  destWx: {
+    ident: string;
+    arrivalLocal: string | null;
+    runway: string | null;
+    wx: 'V' | 'I' | null;
+    report: SuitabilityReport | null;
     metarRaw?: string;
     tafRaw?: string;
   } | null;

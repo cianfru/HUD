@@ -17,9 +17,10 @@ function baseState(over: Partial<HudState>): HudState {
     briefingAgeSec: null,
     closestAlternate: null,
     criticalPhase: false,
+    focus: 'page',
     divertSelection: 0,
-    divertExpanded: false,
     selectedWx: null,
+    destWx: null,
     ...over,
   };
 }
@@ -66,11 +67,11 @@ describe('DIVERT view', () => {
 
   it('reports an empty in-range result', () => {
     const c = buildView('DIVERT', baseState({ alternates: [], briefingAgeSec: 600 }));
-    expect(c[0]!.text).toMatch(/0 ENROUTE ALTN/);
+    expect(c[0]!.text).toMatch(/0 ALTN/);
     expect(c[1]!.text).toMatch(/no suitable A320 field/);
   });
 
-  it('lists fields with best marker, runway in use, VMC/IMC and track-relative bearing', () => {
+  it('lists fields with runway in use, VMC/IMC and track-relative bearing', () => {
     const alternates: Alternate[] = [
       alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, relBearingDeg: 30, best: true, runway: '30', wx: 'V' }),
       alt({
@@ -81,10 +82,11 @@ describe('DIVERT view', () => {
         wx: 'I',
       }),
     ];
-    const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 720 }));
-    expect(c[0]!.text).toMatch(/2 ENROUTE ALTN/);
+    // Entered ('list'): the cursor shows on the highlighted row.
+    const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 720, focus: 'list' }));
+    expect(c[0]!.text).toMatch(/2 ALTN/);
     expect(c[0]!.text).toMatch(/PACK 12m/);
-    expect(c[1]!.text).toContain('>OMDB'); // selection cursor defaults to row 0
+    expect(c[1]!.text).toContain('>OMDB'); // cursor defaults to row 0 once entered
     expect(c[1]!.text).toContain('R030');
     expect(c[1]!.text).toContain('RW30');
     expect(c[1]!.text.trim().endsWith('V')).toBe(true);
@@ -93,23 +95,35 @@ describe('DIVERT view', () => {
     expect(c[2]!.text.trim().endsWith('I')).toBe(true);
   });
 
-  it('marks the selected alternate with a cursor', () => {
+  it('shows no cursor at the page level, so swipe is understood to change page', () => {
+    const alternates: Alternate[] = [
+      alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, best: true }),
+    ];
+    const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 60, focus: 'page' }));
+    expect(c[0]!.text).toContain('TAP=open');
+    expect(c[1]!.text.startsWith(' OMDB')).toBe(true); // no '>' cursor when not entered
+  });
+
+  it('marks the selected alternate with a cursor once entered', () => {
     const alternates: Alternate[] = [
       alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, best: true }),
       alt({ waypoint: { ident: 'OOMS', lat: 23.6, lon: 58.3 }, distanceNm: 360 }),
     ];
-    const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 60, divertSelection: 1 }));
+    const c = buildView(
+      'DIVERT',
+      baseState({ alternates, briefingAgeSec: 60, focus: 'list', divertSelection: 1 }),
+    );
     expect(c[1]!.text.startsWith(' OMDB')).toBe(true); // not selected
     expect(c[2]!.text.startsWith('>OOMS')).toBe(true); // cursor on OOMS
   });
 
-  it('expands to the selected field raw METAR/TAF', () => {
+  it('opens the selected field raw METAR/TAF in the detail leaf', () => {
     const report = { verdict: 'GO' as const, checks: [], reasons: [] };
     const c = buildView(
       'DIVERT',
       baseState({
         briefingAgeSec: 60,
-        divertExpanded: true,
+        focus: 'detail',
         selectedWx: {
           ident: 'OMDB',
           report,

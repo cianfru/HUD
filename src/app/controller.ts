@@ -13,6 +13,7 @@ import type { PositionSource } from '../data/position/source.js';
 import { FlightPlan } from '../core/flightplan.js';
 import { computeAlternates } from '../core/diversion.js';
 import { mpsToKnots, metersToFeet } from '../core/units.js';
+import { etaLocal } from '../core/time.js';
 import type { Position } from '../core/types.js';
 import type { BriefingStore } from '../data/briefing.js';
 import type { Minima } from '../core/taf.js';
@@ -20,7 +21,7 @@ import { vmcImc } from '../core/suitability.js';
 import type { SuitabilityMinima } from '../core/suitability.js';
 import { HudRenderer } from '../hud/renderer.js';
 import { VIEW_ORDER } from '../hud/model.js';
-import type { HudView, HudState, HudConfig } from '../hud/model.js';
+import type { HudView, HudFocus, HudState, HudConfig } from '../hud/model.js';
 
 export interface DiversionOptions {
   maxRangeNm?: number;
@@ -124,10 +125,11 @@ export class HudController {
     this.draw();
   }
 
-  // DIVERT drill-down: a selection cursor over the listed alternates, and an
-  // expanded state showing the selected field's raw METAR/TAF.
+  // Two-level navigation. Swipe moves between pages at the top level and, once
+  // drilled in, moves the selection cursor. Tap descends (page->list->detail);
+  // double-press ascends. `divertSelection` is the cursor over the alternates.
+  private focus: HudFocus = 'page';
   private divertSelection = 0;
-  private divertExpanded = false;
   private lastAltCount = 0;
   private criticalPhase = false;
 
@@ -148,54 +150,48 @@ export class HudController {
     else if (h < 1500 || gsKt < 30) this.criticalPhase = true; // low or slow -> GS only
   }
 
-  // Swipe: normally cycles pages. On DIVERT it moves the cursor through the
-  // listed alternates, and only changes page when you swipe past either end
-  // (so scrolling the list and paging use the same natural gesture).
+  // Swipe = move laterally at the current level: change page when at the page
+  // carousel, or move the selection cursor when drilled into a list/detail.
+  // Swipe never changes page while drilled in — you back out with a double-tap
+  // first — so paging stays predictable and separate from scrolling a list.
   private onSwipe(dir: 1 | -1): void {
-    if (this.view !== 'DIVERT' || this.lastAltCount === 0) {
+    if (this.focus === 'page') {
       this.cycleView(dir);
       return;
     }
-    const next = this.divertSelection + dir;
-    if (this.divertExpanded) {
-      this.divertSelection = Math.max(0, Math.min(this.lastAltCount - 1, next)); // stay in the field set
-    } else if (next < 0 || next >= this.lastAltCount) {
-      this.cycleView(dir); // overshoot the ends -> change page
-    } else {
-      this.divertSelection = next;
+    // Inside DIVERT's list or a field's detail: move the cursor, clamped.
+    if (this.view === 'DIVERT' && this.lastAltCount > 0) {
+      this.divertSelection = Math.max(0, Math.min(this.lastAltCount - 1, this.divertSelection + dir));
     }
   }
 
-  // Press: on DIVERT also steps the cursor (a tap alternative to swiping);
-  // elsewhere, the page's context action.
+  // Tap = descend: enter a page's list, then open the selected item's detail.
+  // Pages with no deeper level (CRUISE, DEST) do their own primary action or
+  // nothing; SETTINGS toggles auto-sequence in place.
   private onPress(): void {
-    if (this.view === 'DIVERT') {
-      if (this.lastAltCount > 0) this.divertSelection = (this.divertSelection + 1) % this.lastAltCount;
-    } else if (this.view === 'CRUISE') {
-      this.plan.next();
-    } else if (this.view === 'SETTINGS') {
-      this.config.autoSequence = !this.config.autoSequence;
+    if (this.focus === 'page') {
+      if (this.view === 'DIVERT' && this.lastAltCount > 0) this.focus = 'list';
+      else if (this.view === 'SETTINGS') this.config.autoSequence = !this.config.autoSequence;
+      return;
     }
+    if (this.view === 'DIVERT' && this.focus === 'list') this.focus = 'detail';
   }
 
-  // Double-press: on DIVERT, expand/collapse the selected field's weather.
+  // Double-tap = ascend: detail -> list -> page. At the page carousel there is
+  // nothing above, so it toggles the clock (UTC/local) instead.
   private onDoublePress(): void {
-    if (this.view === 'DIVERT') {
-      this.divertExpanded = !this.divertExpanded;
-    } else {
-      this.config.clock = this.config.clock === 'utc' ? 'local' : 'utc';
-    }
+    if (this.focus === 'detail') this.focus = 'list';
+    else if (this.focus === 'list') this.focus = 'page';
+    else this.config.clock = this.config.clock === 'utc' ? 'local' : 'utc';
   }
 
   private cycleView(dir: 1 | -1): void {
     const i = VIEW_ORDER.indexOf(this.view);
     const n = VIEW_ORDER.length;
     this.view = VIEW_ORDER[(i + dir + n) % n]!;
-    // Leaving DIVERT: reset the drill-down so it opens fresh next time.
-    if (this.view !== 'DIVERT') {
-      this.divertSelection = 0;
-      this.divertExpanded = false;
-    }
+    // Changing page always returns to the page level with a fresh cursor.
+    this.focus = 'page';
+    this.divertSelection = 0;
   }
 
   // --- output ---
@@ -225,7 +221,7 @@ export class HudController {
         : null;
 
     // DIVERT drill-down: clamp the cursor to what's shown (max 4), and gather the
-    // selected field's raw METAR/TAF + per-check report for the expanded card.
+    // selected field's raw METAR/TAF + per-check report for the detail card.
     const shown = Math.min(4, alternates?.length ?? 0);
     this.lastAltCount = shown;
     const sel = shown ? this.divertSelection % shown : 0;
@@ -237,6 +233,24 @@ export class HudController {
             report: this.briefing.report(selAlt.waypoint.ident, now, this.diversion.reasons)!,
             metarRaw: this.briefing.metarRaw(selAlt.waypoint.ident),
             tafRaw: this.briefing.tafRaw(selAlt.waypoint.ident),
+          }
+        : null;
+
+    // DEST page: the destination's own arrival time + latest weather, so it can
+    // be read in flight the same way as an alternate (the ROUTE list didn't).
+    const dest = this.plan.destination;
+    const destWx =
+      this.briefing && dest
+        ? {
+            ident: dest.ident,
+            arrivalLocal: this.position
+              ? etaLocal(now, guidance?.eteToDestSec ?? null, dest.utcOffsetMin)
+              : null,
+            runway: this.briefing.runwayInUse(dest.ident, now),
+            wx: vmcImc(this.briefing.assess(dest.ident, now)?.category),
+            report: this.briefing.report(dest.ident, now, this.diversion.reasons),
+            metarRaw: this.briefing.metarRaw(dest.ident),
+            tafRaw: this.briefing.tafRaw(dest.ident),
           }
         : null;
 
@@ -252,9 +266,10 @@ export class HudController {
       briefingAgeSec,
       closestAlternate,
       criticalPhase: this.criticalPhase,
+      focus: this.focus,
       divertSelection: sel,
-      divertExpanded: this.divertExpanded,
       selectedWx,
+      destWx,
     };
   }
 

@@ -10,7 +10,6 @@ import { SCREEN_W } from '../bridge/bridge.js';
 import type { HudContainer } from '../bridge/bridge.js';
 import { formatKnots, formatDeg, formatFeet, formatNm } from '../core/units.js';
 import { etaLocal } from '../core/time.js';
-import { distanceNm } from '../core/geo.js';
 import type { HudView, HudState } from './model.js';
 
 const ROW_H = 30;
@@ -23,8 +22,8 @@ export function buildView(view: HudView, s: HudState): HudContainer[] {
       return buildCruise(s);
     case 'DIVERT':
       return buildDivert(s);
-    case 'ROUTE':
-      return buildRoute(s);
+    case 'DEST':
+      return buildDest(s);
     case 'SETTINGS':
       return buildSettings(s);
   }
@@ -84,8 +83,8 @@ function buildCruise(s: HudState): HudContainer[] {
 function buildDivert(s: HudState): HudContainer[] {
   const W = SCREEN_W - 2 * MARGIN;
 
-  // Expanded: the selected field's raw METAR/TAF (double-press toggles it).
-  if (s.divertExpanded && s.selectedWx) {
+  // Detail leaf: the selected field's raw METAR/TAF (tap on a list row opens it).
+  if (s.focus === 'detail' && s.selectedWx) {
     return buildDivertWx(s);
   }
 
@@ -97,7 +96,12 @@ function buildDivert(s: HudState): HudContainer[] {
   }
 
   const shown = Math.min(4, s.alternates.length); // the 4 most suitable
-  const header = `DIVERT   ${shown} ENROUTE ALTN   PACK ${formatAge(s.briefingAgeSec)}`;
+  // At the page level (not entered) the list is glanceable but has no cursor —
+  // swipe changes page. Tap enters 'list', where a '>' cursor appears and swipe
+  // moves it; the header trailer tells the pilot which mode they are in.
+  const entered = s.focus !== 'page';
+  const mode = entered ? 'DBL=back' : 'TAP=open';
+  const header = `DIVERT  ${shown} ALTN  PACK ${formatAge(s.briefingAgeSec)}  ${mode}`;
   const containers: HudContainer[] = [
     { id: 1, x: MARGIN, y: 8, w: W, h: ROW_H, text: header },
   ];
@@ -115,10 +119,10 @@ function buildDivert(s: HudState): HudContainer[] {
   }
 
   // The 4 most suitable, each with runway in use and VMC/IMC. '>' marks the
-  // selected field (press cycles it; double-press expands its weather).
+  // selected field once entered; tap opens its weather, double-tap backs out.
   let row = 0;
   for (const a of s.alternates.slice(0, 4)) {
-    const marker = row === s.divertSelection ? '>' : ' ';
+    const marker = entered && row === s.divertSelection ? '>' : ' ';
     const rel = formatRelBrg(a.relBearingDeg);
     const dist = `${formatNm(a.distanceNm)}NM`;
     const rwy = a.runway ? `RW${a.runway}` : 'RW--';
@@ -189,49 +193,35 @@ function formatAge(sec: number | null): string {
   return `${h}h${String(min % 60).padStart(2, '0')}`;
 }
 
-// --- ROUTE: scrolling-free list of the flight plan -----------------------
+// --- DEST: the destination's arrival time + latest weather ----------------
+//
+// Replaces the old ROUTE list (which only mirrored the ND). This is the field
+// you actually want a read on in the cruise: arrival LOCAL time for the PA,
+// likely runway, VMC/IMC, the go/no-go verdict, and the raw METAR/TAF frozen
+// into the pack before departure.
 
-function buildRoute(s: HudState): HudContainer[] {
-  const wps = s.plan.waypoints;
-  const activeIdx = s.plan.activeWaypointIndex;
-  const containers: HudContainer[] = [
-    {
-      id: 1,
-      x: MARGIN,
-      y: 8,
-      w: SCREEN_W - 2 * MARGIN,
-      h: ROW_H,
-      text: `ROUTE  ${wps[0]?.ident ?? '----'} → ${s.plan.destination?.ident ?? '----'}`,
-    },
-  ];
-
-  // Show a window of up to 7 waypoints centred on the active one.
-  const MAX = 7;
-  let start = Math.max(0, activeIdx - 3);
-  const end = Math.min(wps.length, start + MAX);
-  start = Math.max(0, end - MAX);
-
-  let row = 0;
-  for (let i = start; i < end; i++) {
-    const wp = wps[i]!;
-    const marker = i === activeIdx ? '›' : ' ';
-    let detail = '';
-    if (i === activeIdx && s.position) {
-      detail = `  ${formatNm(distanceNm(s.position, wp))} NM`;
-    } else if (i > 0) {
-      detail = `  ${formatNm(distanceNm(wps[i - 1]!, wp))} NM`;
-    }
-    containers.push({
-      id: 2 + row,
-      x: MARGIN,
-      y: 44 + row * ROW_H,
-      w: SCREEN_W - 2 * MARGIN,
-      h: ROW_H,
-      text: `${marker} ${wp.ident}${detail}`,
-    });
-    row++;
+function buildDest(s: HudState): HudContainer[] {
+  const W = SCREEN_W - 2 * MARGIN;
+  const d = s.destWx;
+  if (!d) {
+    return [{ id: 1, x: MARGIN, y: 10, w: W, h: ROW_H, text: 'DEST   no destination set' }];
   }
-  return containers;
+  const arr = d.arrivalLocal ?? '--:--LT';
+  const rwy = d.runway ? `RW${d.runway}` : 'RW--';
+  const wx = d.wx ?? '-';
+  const verdict = d.report ? `  ${d.report.verdict}` : '';
+  const header = `DEST ${d.ident}  ${arr}  ${rwy} ${wx}${verdict}`;
+  const lines: string[] = [header];
+  lines.push(...(d.metarRaw ? wrap('M ' + d.metarRaw, 2) : ['M  no METAR — fetch before departure']));
+  lines.push(...(d.tafRaw ? wrap('T ' + d.tafRaw, 4) : ['T  no TAF']));
+  return lines.slice(0, 8).map((text, i) => ({
+    id: i + 1,
+    x: MARGIN,
+    y: 8 + i * 30,
+    w: W,
+    h: ROW_H,
+    text,
+  }));
 }
 
 // --- SETTINGS ------------------------------------------------------------
@@ -239,10 +229,10 @@ function buildRoute(s: HudState): HudContainer[] {
 function buildSettings(s: HudState): HudContainer[] {
   const lines = [
     'SETTINGS',
-    `Clock:     ${s.config.clock.toUpperCase()}   (double-press to toggle)`,
-    `Auto-seq:  ${s.config.autoSequence ? 'ON' : 'OFF'}   (press to toggle)`,
-    'Swipe: CRUISE - DIVERT - ROUTE - SETTINGS',
-    'DIVERT: offline alternates from the briefing pack',
+    `Clock:     ${s.config.clock.toUpperCase()}   (double-tap at a page to toggle)`,
+    `Auto-seq:  ${s.config.autoSequence ? 'ON' : 'OFF'}   (tap here to toggle)`,
+    'Swipe: CRUISE - DIVERT - DEST - SETTINGS',
+    'DIVERT: tap to open the list, tap a field for its weather',
   ];
   return lines.map((text, i) => ({
     id: 1 + i,
