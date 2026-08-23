@@ -116,26 +116,39 @@ export class HudController {
         this.onSwipe(-1);
         break;
       case 'press':
-        this.onPress();
-        break;
       case 'doublePress':
-        this.onDoublePress();
+        // The G2 does not reliably relay single taps to an app — only swipes
+        // and double-taps come through dependably. So BOTH map to the same
+        // "activate" action (debounced, in case a unit emits click+doubleclick
+        // for one physical double-tap), and no action depends on telling a
+        // single tap from a double tap.
+        this.activate();
         break;
     }
     this.draw();
   }
 
-  // Two-level navigation. Swipe moves between pages at the top level and, once
-  // drilled in, moves the selection cursor. Tap descends (page->list->detail);
-  // double-press ascends. `divertSelection` is the cursor over the alternates.
+  // Navigation grammar, built only on gestures the G2 delivers reliably:
+  //   swipe up/down  = move (between pages at the top level; browse/scroll once
+  //                    drilled in)
+  //   tap (any)      = activate: enter a page's detail, or act on the highlighted
+  //                    setting. Double-tap in DIVERT detail steps back out.
+  // `divertSelection` is which alternate the detail browser is showing;
+  // `settingsSelection` is the highlighted SETTINGS row.
   private focus: HudFocus = 'page';
   private divertSelection = 0;
   private settingsSelection = 0;
   private lastAltCount = 0;
+  private lastActivateMs = 0;
   private criticalPhase = false;
 
-  /** Toggleable settings, in list order — label is rendered by the view. */
-  private static readonly SETTINGS_COUNT = 2;
+  // SETTINGS rows, in order: two toggles then a Back row (activating Back exits).
+  private static readonly SETTINGS_CLOCK = 0;
+  private static readonly SETTINGS_AUTOSEQ = 1;
+  private static readonly SETTINGS_BACK = 2;
+  private static readonly SETTINGS_ROWS = 3;
+  /** Collapse a click+double-click pair from one physical tap into one action. */
+  private static readonly ACTIVATE_DEBOUNCE_MS = 350;
 
   /**
    * The CRUISE page declutters to GS only unless the aircraft is clearly in
@@ -154,51 +167,60 @@ export class HudController {
     else if (h < 1500 || gsKt < 30) this.criticalPhase = true; // low or slow -> GS only
   }
 
-  // Swipe = move laterally at the current level: change page when at the page
-  // carousel, or move the selection cursor when drilled into a list/detail.
-  // Swipe never changes page while drilled in — you back out with a double-tap
-  // first — so paging stays predictable and separate from scrolling a list.
+  // Swipe = move at the current level: change page at the top; browse the
+  // alternates in DIVERT detail; move the highlighted row in SETTINGS. Swipe
+  // never changes page once drilled in, so paging stays separate from scrolling.
   private onSwipe(dir: 1 | -1): void {
     if (this.focus === 'page') {
       this.cycleView(dir);
-      return;
-    }
-    // Inside a page's list: move the cursor, clamped to that list's length.
-    if (this.view === 'DIVERT' && this.lastAltCount > 0) {
+    } else if (this.view === 'DIVERT' && this.lastAltCount > 0) {
       this.divertSelection = clamp(this.divertSelection + dir, 0, this.lastAltCount - 1);
     } else if (this.view === 'SETTINGS') {
-      this.settingsSelection = clamp(this.settingsSelection + dir, 0, HudController.SETTINGS_COUNT - 1);
+      this.settingsSelection = clamp(this.settingsSelection + dir, 0, HudController.SETTINGS_ROWS - 1);
     }
   }
 
-  // Tap = descend: enter a page's list, then activate the selected item —
-  // opening a field's weather on DIVERT, or toggling the setting on SETTINGS.
-  // Pages with no deeper level (CRUISE, DEST) do nothing.
-  private onPress(): void {
+  /**
+   * Activate (any tap). At the page level it drills into the current page's
+   * detail; inside a page it acts on what's shown. Debounced so a click+
+   * double-click pair from one physical tap counts once.
+   */
+  private activate(): void {
+    const t = this.now();
+    if (t - this.lastActivateMs < HudController.ACTIVATE_DEBOUNCE_MS) return;
+    this.lastActivateMs = t;
+
     if (this.focus === 'page') {
-      if (this.view === 'DIVERT' && this.lastAltCount > 0) this.focus = 'list';
-      else if (this.view === 'SETTINGS') this.focus = 'list';
+      // Enter the page's detail. CRUISE/DEST have none — they show everything.
+      if (this.view === 'DIVERT' && this.lastAltCount > 0) {
+        this.focus = 'detail';
+        this.divertSelection = 0;
+      } else if (this.view === 'SETTINGS') {
+        this.focus = 'list';
+        this.settingsSelection = 0;
+      }
       return;
     }
-    if (this.view === 'DIVERT' && this.focus === 'list') this.focus = 'detail';
-    else if (this.view === 'SETTINGS' && this.focus === 'list') this.toggleSetting();
-  }
-
-  /** Toggle the highlighted setting (0 = clock UTC/local, 1 = auto-sequence). */
-  private toggleSetting(): void {
-    if (this.settingsSelection === 0) {
-      this.config.clock = this.config.clock === 'utc' ? 'local' : 'utc';
-    } else {
-      this.config.autoSequence = !this.config.autoSequence;
+    if (this.view === 'DIVERT' && this.focus === 'detail') {
+      this.focus = 'page'; // done reading the weather -> back to the pages
+    } else if (this.view === 'SETTINGS' && this.focus === 'list') {
+      this.activateSetting();
     }
   }
 
-  // Double-tap = ascend: detail -> list -> page. At the page carousel there is
-  // nothing above, so it toggles the clock (UTC/local) instead.
-  private onDoublePress(): void {
-    if (this.focus === 'detail') this.focus = 'list';
-    else if (this.focus === 'list') this.focus = 'page';
-    else this.config.clock = this.config.clock === 'utc' ? 'local' : 'utc';
+  /** Act on the highlighted SETTINGS row: toggle a setting, or Back exits. */
+  private activateSetting(): void {
+    switch (this.settingsSelection) {
+      case HudController.SETTINGS_CLOCK:
+        this.config.clock = this.config.clock === 'utc' ? 'local' : 'utc';
+        break;
+      case HudController.SETTINGS_AUTOSEQ:
+        this.config.autoSequence = !this.config.autoSequence;
+        break;
+      case HudController.SETTINGS_BACK:
+        this.focus = 'page';
+        break;
+    }
   }
 
   private cycleView(dir: 1 | -1): void {

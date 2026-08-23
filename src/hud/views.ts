@@ -96,12 +96,10 @@ function buildDivert(s: HudState): HudContainer[] {
   }
 
   const shown = Math.min(4, s.alternates.length); // the 4 most suitable
-  // At the page level (not entered) the list is glanceable but has no cursor —
-  // swipe changes page. Tap enters 'list', where a '>' cursor appears and swipe
-  // moves it; the header trailer tells the pilot which mode they are in.
-  const entered = s.focus !== 'page';
-  const mode = entered ? 'DBL=back' : 'TAP=open';
-  const header = `DIVERT  ${shown} ALTN  PACK ${formatAge(s.briefingAgeSec)}  ${mode}`;
+  // The 4-up is always glanceable and cursor-less: swipe changes page. Two taps
+  // open the weather browser (double-tap is the gesture the G2 delivers).
+  const hint = shown > 0 ? '2TAP=WX' : '';
+  const header = `DIVERT  ${shown} ALTN  PACK ${formatAge(s.briefingAgeSec)}  ${hint}`.trimEnd();
   const containers: HudContainer[] = [
     { id: 1, x: MARGIN, y: 8, w: W, h: ROW_H, text: header },
   ];
@@ -118,11 +116,9 @@ function buildDivert(s: HudState): HudContainer[] {
     return containers;
   }
 
-  // The 4 most suitable, each with runway in use and VMC/IMC. '>' marks the
-  // selected field once entered; tap opens its weather, double-tap backs out.
+  // The 4 most suitable, each with runway in use and VMC/IMC.
   let row = 0;
   for (const a of s.alternates.slice(0, 4)) {
-    const marker = entered && row === s.divertSelection ? '>' : ' ';
     const rel = formatRelBrg(a.relBearingDeg);
     const dist = `${formatNm(a.distanceNm)}NM`;
     const rwy = a.runway ? `RW${a.runway}` : 'RW--';
@@ -133,19 +129,22 @@ function buildDivert(s: HudState): HudContainer[] {
       y: 46 + row * 34,
       w: W,
       h: ROW_H,
-      text: `${marker}${a.waypoint.ident.padEnd(4)} ${rel} ${dist.padStart(6)}  ${rwy} ${wx}`,
+      text: ` ${a.waypoint.ident.padEnd(4)} ${rel} ${dist.padStart(6)}  ${rwy} ${wx}`,
     });
     row++;
   }
   return containers;
 }
 
-// Expanded card: the selected alternate's latest weather — raw METAR + TAF,
-// with the go/no-go verdict. The actual observation/forecast, not just OK/not OK.
+// Weather browser: the selected alternate's latest raw METAR + TAF with the
+// go/no-go verdict. Swipe steps through the alternates (N/M shows the position);
+// two taps step back out to the pages.
 function buildDivertWx(s: HudState): HudContainer[] {
   const W = SCREEN_W - 2 * MARGIN;
   const { ident, report, metarRaw, tafRaw } = s.selectedWx!;
-  const lines: string[] = [`${ident}   ${report.verdict}   PACK ${formatAge(s.briefingAgeSec)}`];
+  const total = Math.min(4, s.alternates?.length ?? 0);
+  const pos = total ? `${s.divertSelection + 1}/${total}` : '';
+  const lines: string[] = [`${ident} ${pos}  ${report.verdict}  2TAP=BACK`.replace(/\s+/g, ' ')];
   lines.push(...(metarRaw ? wrap('M ' + metarRaw, 2) : ['M  no METAR']));
   lines.push(...(tafRaw ? wrap('T ' + tafRaw, 4) : ['T  no TAF']));
   return lines.slice(0, 8).map((text, i) => ({
@@ -226,20 +225,21 @@ function buildDest(s: HudState): HudContainer[] {
 
 // --- SETTINGS ------------------------------------------------------------
 
-// SETTINGS drills in the same way as DIVERT: tap enters the selectable list,
-// swipe moves the cursor, tap toggles the highlighted setting, double-tap backs
-// out. The '>' cursor and TAP=toggle hint appear only once entered.
+// SETTINGS: two taps enter edit mode; swipe moves the '>' cursor over the rows;
+// two taps activate the highlighted row — toggling a setting, or "< Back" to
+// leave. Cursor and hint appear only once editing (matching every other page).
 function buildSettings(s: HudState): HudContainer[] {
-  const entered = s.focus !== 'page';
-  const mode = entered ? 'DBL=back  TAP=toggle' : 'TAP=open';
-  const items = [
+  const editing = s.focus !== 'page';
+  const hint = editing ? '2TAP=SET' : '2TAP=EDIT';
+  const rows = [
     `Clock     ${s.config.clock.toUpperCase()}`,
     `Auto-seq  ${s.config.autoSequence ? 'ON' : 'OFF'}`,
+    '< Back',
   ];
-  const lines: string[] = [`SETTINGS   ${mode}`];
-  items.forEach((it, i) => {
-    const marker = entered && i === s.settingsSelection ? '>' : ' ';
-    lines.push(`${marker}${it}`);
+  const lines: string[] = [`SETTINGS   ${hint}`];
+  rows.forEach((r, i) => {
+    const marker = editing && i === s.settingsSelection ? '>' : ' ';
+    lines.push(`${marker}${r}`);
   });
   lines.push('Swipe: CRUISE - DIVERT - DEST - SETTINGS');
   return lines.map((text, i) => ({

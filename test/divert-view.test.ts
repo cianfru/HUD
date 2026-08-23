@@ -72,7 +72,7 @@ describe('DIVERT view', () => {
     expect(c[1]!.text).toMatch(/no suitable A320 field/);
   });
 
-  it('lists fields with runway in use, VMC/IMC and track-relative bearing', () => {
+  it('lists fields with runway in use, VMC/IMC and track-relative bearing (page level, no cursor)', () => {
     const alternates: Alternate[] = [
       alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, relBearingDeg: 30, best: true, runway: '30', wx: 'V' }),
       alt({
@@ -83,11 +83,12 @@ describe('DIVERT view', () => {
         wx: 'I',
       }),
     ];
-    // Entered ('list'): the cursor shows on the highlighted row.
-    const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 720, focus: 'list' }));
+    const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 720 }));
     expect(c[0]!.text).toMatch(/2 ALTN/);
     expect(c[0]!.text).toMatch(/PACK 12m/);
-    expect(c[1]!.text).toContain('>OMDB'); // cursor defaults to row 0 once entered
+    expect(c[0]!.text).toContain('2TAP=WX'); // two taps open the weather browser
+    expect(c[1]!.text).toContain('OMDB');
+    expect(c[1]!.text).not.toContain('>'); // the 4-up is always cursor-less
     expect(c[1]!.text).toContain('R030');
     expect(c[1]!.text).toContain('RW30');
     expect(c[1]!.text.trim().endsWith('V')).toBe(true);
@@ -96,35 +97,19 @@ describe('DIVERT view', () => {
     expect(c[2]!.text.trim().endsWith('I')).toBe(true);
   });
 
-  it('shows no cursor at the page level, so swipe is understood to change page', () => {
-    const alternates: Alternate[] = [
-      alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, best: true }),
-    ];
-    const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 60, focus: 'page' }));
-    expect(c[0]!.text).toContain('TAP=open');
-    expect(c[1]!.text.startsWith(' OMDB')).toBe(true); // no '>' cursor when not entered
-  });
-
-  it('marks the selected alternate with a cursor once entered', () => {
-    const alternates: Alternate[] = [
-      alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, best: true }),
-      alt({ waypoint: { ident: 'OOMS', lat: 23.6, lon: 58.3 }, distanceNm: 360 }),
-    ];
-    const c = buildView(
-      'DIVERT',
-      baseState({ alternates, briefingAgeSec: 60, focus: 'list', divertSelection: 1 }),
-    );
-    expect(c[1]!.text.startsWith(' OMDB')).toBe(true); // not selected
-    expect(c[2]!.text.startsWith('>OOMS')).toBe(true); // cursor on OOMS
-  });
-
-  it('opens the selected field raw METAR/TAF in the detail leaf', () => {
+  it('opens the selected field raw METAR/TAF in the weather browser, with N/M and a back hint', () => {
     const report = { verdict: 'GO' as const, checks: [], reasons: [] };
+    const alternates: Alternate[] = [
+      alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 } }),
+      alt({ waypoint: { ident: 'OOMS', lat: 23.6, lon: 58.3 } }),
+    ];
     const c = buildView(
       'DIVERT',
       baseState({
+        alternates,
         briefingAgeSec: 60,
         focus: 'detail',
+        divertSelection: 0,
         selectedWx: {
           ident: 'OMDB',
           report,
@@ -133,7 +118,9 @@ describe('DIVERT view', () => {
         },
       }),
     );
-    expect(c[0]!.text).toMatch(/^OMDB   GO/);
+    expect(c[0]!.text).toMatch(/^OMDB 1\/2/); // ident + position in the browser
+    expect(c[0]!.text).toContain('GO');
+    expect(c[0]!.text).toContain('2TAP=BACK');
     expect(c.some((x) => x.text.includes('30012KT CAVOK'))).toBe(true); // raw METAR
     expect(c.some((x) => x.text.includes('2312/2418'))).toBe(true); // raw TAF
   });
