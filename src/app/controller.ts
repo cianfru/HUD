@@ -132,15 +132,18 @@ export class HudController {
   private criticalPhase = false;
 
   /**
-   * Below 1500 ft the HUD declutters to GS only (critical phase — eyes outside).
-   * Hysteresis (enter <1500, exit >1700) so GPS-altitude noise can't flicker it.
-   * Uses GPS geometric altitude — a proxy for height; good near sea-level fields.
+   * Critical phase = low AND moving (takeoff / approach / landing) — declutter to
+   * GS only, eyes outside. Requiring movement means parked or taxiing on the
+   * ground keeps the full HUD (so you can use every page), while short final and
+   * the takeoff roll still declutter. Hysteresis on both axes so GPS noise near a
+   * threshold can't flicker it. GPS geometric altitude is a height proxy.
    */
   private updateCriticalPhase(): void {
     const h = this.position?.altitudeM != null ? metersToFeet(this.position.altitudeM) : null;
     if (h == null) return; // no height info — hold the last state
-    if (h < 1500) this.criticalPhase = true;
-    else if (h > 1700) this.criticalPhase = false;
+    const gsKt = this.position?.speedMps != null ? mpsToKnots(this.position.speedMps) : 0;
+    if (h < 1500 && gsKt > 40) this.criticalPhase = true;
+    else if (h > 1700 || gsKt < 30) this.criticalPhase = false;
   }
 
   // Swipe: normally cycles pages. On DIVERT it moves the cursor through the
