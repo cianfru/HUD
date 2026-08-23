@@ -41,20 +41,20 @@ function buildCruise(s: HudState): HudContainer[] {
   const alt = pos ? `GPSALT ${formatFeet(pos.altitudeM)}` : 'GPSALT -----';
 
   // No next-waypoint here — that's on the ND. CRUISE adds what the ND doesn't:
-  // destination arrival LOCAL time (for the pax PA) and the closest usable
-  // enroute alternate + its likely runway in use. NO GPS shows on the exception.
-  const dest = s.plan.destination;
-  const destLine = !pos
-    ? 'NO GPS'
-    : dest
-      ? `DEST ${dest.ident}  ${etaLocal(s.now, g?.eteToDestSec ?? null, dest.utcOffsetMin)}`
-      : 'DEST ----';
-
+  // the closest usable enroute alternate (runway in use + VMC/IMC) on the left,
+  // and destination arrival LOCAL time (for the pax PA) on the right.
   const a = s.closestAlternate;
-  const altn = a
-    ? `ALTN ${a.ident}  ${formatDeg(a.bearingDeg)}/${formatNm(a.distanceNm)}NM` +
-      (a.runway ? `  RW${a.runway}` : '')
-    : 'ALTN ----';
+  const altn = !pos
+    ? 'NO GPS'
+    : a
+      ? `ALTN ${a.ident} ${formatDeg(a.bearingDeg)}/${Math.round(a.distanceNm)}NM` +
+        (a.runway ? ` RW${a.runway}` : '') +
+        (a.wx ? ` ${a.wx}` : '')
+      : 'ALTN ----';
+
+  const dest = s.plan.destination;
+  const destText =
+    pos && dest ? `${dest.ident} ${etaLocal(s.now, g?.eteToDestSec ?? null, dest.utcOffsetMin)}` : '';
 
   // All in the TOP band; the lower part of the display stays clear.
   return [
@@ -62,8 +62,8 @@ function buildCruise(s: HudState): HudContainer[] {
     { id: 5, x: 210, y: 6, w: 170, h: 34, text: trk },
     { id: 6, x: 384, y: 6, w: RIGHT - 384, h: 34, text: alt },
 
-    { id: 7, x: MARGIN, y: 46, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: destLine },
-    { id: 1, x: MARGIN, y: 78, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: altn },
+    { id: 7, x: MARGIN, y: 46, w: 400, h: ROW_H, text: altn },
+    { id: 8, x: 416, y: 46, w: RIGHT - 416, h: ROW_H, text: destText },
   ];
 }
 

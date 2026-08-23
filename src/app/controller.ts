@@ -153,6 +153,7 @@ export class HudController {
     const { alternates, briefingAgeSec } = this.computeDiversion(now);
     const best = alternates?.find((a) => a.best) ?? alternates?.[0];
     const report = this.briefing && best ? this.briefing.report(best.waypoint.ident, now, this.diversion.reasons) : null;
+    const cat = this.briefing && best ? this.briefing.assess(best.waypoint.ident, now)?.category : null;
     const closestAlternate =
       this.briefing && best
         ? {
@@ -160,6 +161,8 @@ export class HudController {
             bearingDeg: best.bearingDeg,
             distanceNm: best.distanceNm,
             runway: this.briefing.runwayInUse(best.waypoint.ident, now),
+            // VMC when the forecast is VFR/MVFR, IMC when IFR/LIFR, else unknown.
+            wx: cat === 'VFR' || cat === 'MVFR' ? ('V' as const) : cat === 'IFR' || cat === 'LIFR' ? ('I' as const) : null,
           }
         : null;
     return {
