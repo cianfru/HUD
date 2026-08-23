@@ -3,28 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>G2 Aviation HUD — Glasses build</title>
+    <title>G2 Aviation HUD</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #06100b; color: #6b8f77;
+      html, body { margin: 0; min-height: 100%; background: #06100b; color: #8fc7a6;
         font-family: ui-monospace, Menlo, monospace; }
-      .wrap { height: 100%; display: flex; flex-direction: column; align-items: center;
-        justify-content: center; gap: 10px; text-align: center; padding: 20px; }
-      h1 { font-size: 14px; letter-spacing: .1em; color: #9fe6bd; margin: 0; text-transform: uppercase; }
-      p { font-size: 12px; max-width: 34em; line-height: 1.5; margin: 0; }
+      .wrap { max-width: 34em; margin: 0 auto; padding: 18px; display: flex;
+        flex-direction: column; gap: 14px; }
+      h1 { font-size: 15px; letter-spacing: .12em; color: #9fe6bd; margin: 0;
+        text-transform: uppercase; }
+      .card { background: #0a1a12; border: 1px solid #1f3a2a; border-radius: 10px; padding: 14px; }
+      h2 { font-size: 12px; letter-spacing: .1em; color: #7fd6a6; margin: 0 0 10px;
+        text-transform: uppercase; }
+      p, label { font-size: 12px; line-height: 1.5; margin: 0; }
+      .muted { color: #6b8f77; }
       code { color: #37f39a; }
+      textarea { width: 100%; box-sizing: border-box; height: 8em; background: #06100b;
+        color: #9fe6bd; border: 1px solid #234; border-radius: 6px; font-family: inherit;
+        font-size: 11px; padding: 8px; }
+      .row { display: flex; gap: 8px; margin: 8px 0; }
+      .row input { flex: 1; min-width: 0; background: #06100b; color: #9fe6bd;
+        border: 1px solid #234; border-radius: 6px; font-family: inherit; font-size: 14px;
+        text-transform: uppercase; padding: 8px; text-align: center; }
+      button { background: #123; color: #9fe6bd; border: 1px solid #2a5; border-radius: 6px;
+        padding: 9px 14px; font-size: 13px; cursor: pointer; width: 100%; }
+      button.ghost { border-color: #234; color: #6b8f77; }
+      .msg { font-size: 11px; color: #7fd6a6; min-height: 1.2em; margin-top: 8px; }
+      .status { font-size: 12px; color: #9fe6bd; }
     </style>
   </head>
   <body>
-    <!--
-      This page is loaded by the Even Hub simulator (or the Even iPhone app).
-      The HUD is drawn on the GLASSES display via the SDK, not in this webview.
-      This panel is just a status line for the webview screenshot.
-    -->
     <div class="wrap">
-      <h1>G2 Aviation HUD · glasses build</h1>
-      <p id="status">initialising…</p>
-      <p>The HUD renders on the emulated glasses display. Touchpad: <code>Up/Down</code>
-        change page, <code>Click</code> = action, <code>Double-click</code> = clock.</p>
+      <h1>G2 Aviation HUD</h1>
+      <p id="status" class="status">initialising…</p>
+
+      <div class="card">
+        <h2>Flight — paste OFP (offline)</h2>
+        <p class="muted">Paste your OFP text. Idents and weather come from the OFP; runways
+          and positions are built in. No connection needed.</p>
+        <textarea id="ofp" placeholder="Paste the full OFP text here…"></textarea>
+        <button id="build-ofp">Build from OFP &amp; fly</button>
+      </div>
+
+      <div class="card">
+        <h2>Or type the flight</h2>
+        <p class="muted">Enter departure, destination and (optionally) a destination alternate.
+          En-route alternates are added along the route. Weather is fetched live (needs a
+          connection now).</p>
+        <div class="row">
+          <input id="dep" placeholder="DEP" maxlength="4" />
+          <input id="dest" placeholder="DEST" maxlength="4" />
+          <input id="altn" placeholder="ALTN" maxlength="4" />
+        </div>
+        <button id="build-route">Build from route &amp; fly</button>
+      </div>
+
+      <div class="card">
+        <h2>Loaded</h2>
+        <p id="loaded" class="status">no flight set — flying the demo</p>
+        <p class="msg" id="msg"></p>
+        <button id="clear" class="ghost" style="margin-top:8px">Clear &amp; use demo</button>
+      </div>
+
+      <p class="muted">The HUD renders on the glasses. Swipe = page; on the alternates page
+        swipe = next field, double-tap = its weather.</p>
     </div>
     <script type="module" src="./main.ts"></script>
   </body>

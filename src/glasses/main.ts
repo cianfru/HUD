@@ -1,34 +1,125 @@
 /**
- * On-glasses / official-simulator entry.
+ * On-glasses entry.
  *
- * Unlike the phone MVP (which draws to a canvas), this build renders through the
- * real Even Hub SDK: it emits text containers that the glasses firmware — and
- * the official `@evenrealities/evenhub-simulator` — rasterise to the 576×288
- * display. It flies the demo route with the SIMULATED position source, because
- * the simulator provides no GPS/IMU, so the HUD is alive in the preview.
+ * The pilot sets the flight in the phone panel — paste the OFP (offline) or type
+ * dep/dest/altn — which builds a briefing pack, stored on the device. The HUD
+ * then flies the REAL GPS fix (Garmin GLO via the SDK) against that pack. With
+ * no flight set it falls back to the bundled demo (simulated route) so there is
+ * always something to see.
  *
- * Run it against the official simulator (on a Mac/PC with a display):
- *   npm run dev:glasses            # serves http://localhost:5175
- *   npx @evenrealities/evenhub-simulator http://localhost:5175
- *
- * Touchpad: Up/Down cycle pages (CRUISE · DIVERT · ROUTE · SETTINGS), Click =
- * context action, Double-click = toggle UTC/local clock. DIVERT is the offline
- * diversion picture, ranked from the pre-flight briefing pack (no network).
+ * Touchpad / R1 ring: swipe = page; on the alternates page swipe steps between
+ * fields and double-press opens the selected field's METAR/TAF.
  */
 import { waitForEvenAppBridge } from '@evenrealities/even_hub_sdk';
 import { EvenSdkBridge } from '../bridge/even-sdk.js';
+import { SdkPositionSource } from '../data/position/sdk-source.js';
 import { SimulatedPositionSource } from '../data/position/sim-source.js';
+import type { PositionSource } from '../data/position/source.js';
 import { HudController } from '../app/controller.js';
 import { FlightPlan } from '../core/flightplan.js';
 import { parseRoute } from '../data/route-parser.js';
-import { DEMO_ROUTE_STRING } from '../data/navdata.js';
+import { DEMO_ROUTE_STRING, AIRPORTS } from '../data/navdata.js';
 import { BriefingStore } from '../data/briefing.js';
+import type { BriefingPack } from '../data/briefing.js';
 import { DEMO_BRIEFING } from '../data/briefing-demo.js';
+import { packFromOfp, packFromRoute } from '../data/build-pack.js';
+import type { Waypoint } from '../core/types.js';
+
+const FLIGHT_KEY = 'glasses.flight';
+// Weather proxy for the typed-route path (same functions the mobile MVP deploys).
+const WX_BASE = 'https://g2-aviation-hud.vercel.app';
+
+interface StoredFlight {
+  pack: BriefingPack;
+  adep?: string;
+  ades?: string;
+}
 
 function status(msg: string): void {
   const el = document.getElementById('status');
   if (el) el.textContent = msg;
   console.log('[glasses]', msg);
+}
+function msg(text: string): void {
+  const el = document.getElementById('msg');
+  if (el) el.textContent = text;
+}
+
+function loadFlight(): StoredFlight | null {
+  try {
+    const raw = localStorage.getItem(FLIGHT_KEY);
+    if (!raw) return null;
+    const f = JSON.parse(raw) as StoredFlight;
+    if (f?.pack?.airports?.length) return f;
+  } catch (e) {
+    console.warn('[glasses] stored flight unreadable:', e);
+  }
+  return null;
+}
+
+function saveAndReload(flight: StoredFlight): void {
+  localStorage.setItem(FLIGHT_KEY, JSON.stringify(flight));
+  location.reload();
+}
+
+/** Route waypoints for the flight plan; the destination carries its UTC offset
+ *  (for arrival local time) when it is a known field. */
+function routeWaypoints(store: BriefingStore, adep?: string, ades?: string): Waypoint[] {
+  const wps: Waypoint[] = [];
+  const dep = adep ? store.asWaypoint(adep) : undefined;
+  const dest = ades ? store.asWaypoint(ades) : undefined;
+  if (dep) wps.push(dep);
+  if (dest) {
+    const off = ades ? AIRPORTS[ades]?.utcOffsetMin : undefined;
+    wps.push(off != null ? { ...dest, utcOffsetMin: off } : dest);
+  }
+  return wps;
+}
+
+function updateLoaded(): void {
+  const el = document.getElementById('loaded');
+  if (!el) return;
+  const f = loadFlight();
+  el.textContent = f
+    ? `Flying ${f.adep ?? '?'} → ${f.ades ?? '?'}  (${f.pack.airports.length} fields, ` +
+      `${f.pack.weather.filter((w) => w.tafRaw).length} TAFs)`
+    : 'no flight set — flying the demo';
+}
+
+function wireForm(): void {
+  document.getElementById('build-ofp')?.addEventListener('click', () => {
+    const text = (document.getElementById('ofp') as HTMLTextAreaElement | null)?.value ?? '';
+    if (text.trim().length < 20) return msg('paste the OFP text first');
+    try {
+      const flight = packFromOfp(text);
+      if (!flight.pack.airports.length) return msg('no known airports found in that OFP');
+      msg(`built ${flight.adep ?? '?'} → ${flight.ades ?? '?'}, ${flight.pack.airports.length} fields — loading…`);
+      saveAndReload(flight);
+    } catch (e) {
+      msg('could not parse that OFP: ' + String(e));
+    }
+  });
+
+  document.getElementById('build-route')?.addEventListener('click', async () => {
+    const val = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim().toUpperCase() ?? '';
+    const dep = val('dep');
+    const dest = val('dest');
+    const altn = val('altn');
+    if (!/^[A-Z]{4}$/.test(dep) || !/^[A-Z]{4}$/.test(dest)) return msg('enter valid DEP and DEST ICAO idents');
+    msg('building route + fetching weather…');
+    try {
+      const flight = await packFromRoute(dep, dest, altn ? [altn] : [], { wxBase: WX_BASE });
+      msg(`built ${dep} → ${dest}, ${flight.pack.airports.length} fields — loading…`);
+      saveAndReload(flight);
+    } catch (e) {
+      msg('could not build that route: ' + String(e));
+    }
+  });
+
+  document.getElementById('clear')?.addEventListener('click', () => {
+    localStorage.removeItem(FLIGHT_KEY);
+    location.reload();
+  });
 }
 
 async function boot(): Promise<void> {
@@ -36,27 +127,40 @@ async function boot(): Promise<void> {
   const sdk = await waitForEvenAppBridge();
   const bridge = new EvenSdkBridge(sdk);
 
-  const { waypoints } = parseRoute(DEMO_ROUTE_STRING);
-  const source = new SimulatedPositionSource(waypoints, {
-    cruiseKt: 458,
-    cruiseAltFt: 37000,
-    updateMs: 1000,
-    timeScale: 20,
-    wanderNm: 0.6,
-  });
+  const flight = loadFlight();
+  let source: PositionSource;
+  let plan: FlightPlan;
+  let briefing: BriefingStore;
 
-  // Offline: the whole diversion picture comes from a pack downloaded on the
-  // ground, never the network. Clock is real UTC; the diversion assessment runs
-  // at real time too (build a fresh pack pre-flight so its TAFs are in-window).
-  const briefing = new BriefingStore(DEMO_BRIEFING);
+  if (flight) {
+    // Real flight: GLO/phone GPS + the pack the pilot set up.
+    briefing = new BriefingStore(flight.pack);
+    plan = new FlightPlan(routeWaypoints(briefing, flight.adep, flight.ades));
+    source = new SdkPositionSource(sdk);
+    status(`flying ${flight.adep ?? '?'} → ${flight.ades ?? '?'} — live GPS`);
+  } else {
+    // Demo: simulated route + bundled pack.
+    const { waypoints } = parseRoute(DEMO_ROUTE_STRING);
+    briefing = new BriefingStore(DEMO_BRIEFING);
+    plan = new FlightPlan(waypoints);
+    source = new SimulatedPositionSource(waypoints, {
+      cruiseKt: 458,
+      cruiseAltFt: 37000,
+      updateMs: 1000,
+      timeScale: 20,
+      wanderNm: 0.6,
+    });
+    status('demo — no flight set (simulated route)');
+  }
 
-  const controller = new HudController(bridge, source, new FlightPlan(waypoints), {
+  const controller = new HudController(bridge, source, plan, {
     tickMs: 1000,
     briefing,
     diversion: { maxRangeNm: 1000, limit: 6 },
   });
   controller.start();
-  status('running — HUD rendered on the glasses display');
 }
 
+wireForm();
+updateLoaded();
 boot().catch((err) => status(`failed to start: ${String(err)}`));
