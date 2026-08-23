@@ -15,6 +15,11 @@
 import { toRad, angleDiffDeg } from './geo.js';
 import type { FltCat } from './taf.js';
 
+/** Map a flight category to a VMC/IMC glance flag: 'V' visual, 'I' instrument. */
+export function vmcImc(cat: FltCat | null | undefined): 'V' | 'I' | null {
+  return cat === 'VFR' || cat === 'MVFR' ? 'V' : cat === 'IFR' || cat === 'LIFR' ? 'I' : null;
+}
+
 export type CheckStatus = 'pass' | 'fail' | 'unknown';
 export type Verdict = 'GO' | 'CAUTION' | 'NOGO' | 'UNKNOWN';
 

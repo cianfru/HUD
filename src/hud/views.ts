@@ -9,7 +9,7 @@
 import { SCREEN_W } from '../bridge/bridge.js';
 import type { HudContainer } from '../bridge/bridge.js';
 import { formatKnots, formatDeg, formatFeet, formatNm } from '../core/units.js';
-import { formatDuration, etaLocal } from '../core/time.js';
+import { etaLocal } from '../core/time.js';
 import { distanceNm } from '../core/geo.js';
 import type { HudView, HudState } from './model.js';
 
@@ -96,7 +96,8 @@ function buildDivert(s: HudState): HudContainer[] {
     return [{ id: 1, x: MARGIN, y: 10, w: W, h: ROW_H, text: msg }];
   }
 
-  const header = `DIVERT   ${s.alternates.length} A320 FIELDS   PACK ${formatAge(s.briefingAgeSec)}`;
+  const shown = Math.min(4, s.alternates.length); // the 4 most suitable
+  const header = `DIVERT   ${shown} ENROUTE ALTN   PACK ${formatAge(s.briefingAgeSec)}`;
   const containers: HudContainer[] = [
     { id: 1, x: MARGIN, y: 8, w: W, h: ROW_H, text: header },
   ];
@@ -113,21 +114,21 @@ function buildDivert(s: HudState): HudContainer[] {
     return containers;
   }
 
-  // Up to 6 rows keeps us within the 8-text-container firmware limit (1 header).
+  // The 4 most suitable, each with runway in use and VMC/IMC.
   let row = 0;
-  for (const a of s.alternates.slice(0, 6)) {
+  for (const a of s.alternates.slice(0, 4)) {
     const marker = a.best ? '*' : ' ';
     const rel = formatRelBrg(a.relBearingDeg);
     const dist = `${formatNm(a.distanceNm)}NM`;
-    const ete = a.eteSec != null ? formatDuration(a.eteSec) : '--:--';
-    const go = a.suitable ? 'GO' : 'WX'; // WX = ruled out on weather (ASCII; no glyph font)
+    const rwy = a.runway ? `RW${a.runway}` : 'RW--';
+    const wx = a.wx ?? '-';
     containers.push({
       id: 2 + row,
       x: MARGIN,
-      y: 44 + row * ROW_H,
+      y: 46 + row * 34,
       w: W,
       h: ROW_H,
-      text: `${marker}${a.waypoint.ident.padEnd(4)} ${rel} ${dist.padStart(6)} ${ete} ${go}`,
+      text: `${marker}${a.waypoint.ident.padEnd(4)} ${rel} ${dist.padStart(6)}  ${rwy} ${wx}`,
     });
     row++;
   }

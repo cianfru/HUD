@@ -31,6 +31,8 @@ const alt = (over: Partial<Alternate>): Alternate => ({
   eteSec: 1440,
   suitable: true,
   best: false,
+  runway: '30',
+  wx: 'V',
   ...over,
 });
 
@@ -63,28 +65,31 @@ describe('DIVERT view', () => {
 
   it('reports an empty in-range result', () => {
     const c = buildView('DIVERT', baseState({ alternates: [], briefingAgeSec: 600 }));
-    expect(c[0]!.text).toMatch(/0 A320 FIELDS/);
+    expect(c[0]!.text).toMatch(/0 ENROUTE ALTN/);
     expect(c[1]!.text).toMatch(/no suitable A320 field/);
   });
 
-  it('lists fields with best marker, GO/WX, and track-relative bearing', () => {
+  it('lists fields with best marker, runway in use, VMC/IMC and track-relative bearing', () => {
     const alternates: Alternate[] = [
-      alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, relBearingDeg: 30, best: true }),
+      alt({ waypoint: { ident: 'OMDB', lat: 25.25, lon: 55.36 }, relBearingDeg: 30, best: true, runway: '30', wx: 'V' }),
       alt({
         waypoint: { ident: 'OOMS', lat: 23.6, lon: 58.3 },
         relBearingDeg: -75,
         distanceNm: 360,
-        suitable: false,
+        runway: '26',
+        wx: 'I',
       }),
     ];
     const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 720 }));
-    expect(c[0]!.text).toMatch(/2 A320 FIELDS/);
+    expect(c[0]!.text).toMatch(/2 ENROUTE ALTN/);
     expect(c[0]!.text).toMatch(/PACK 12m/);
     expect(c[1]!.text).toContain('*OMDB');
     expect(c[1]!.text).toContain('R030');
-    expect(c[1]!.text.trim().endsWith('GO')).toBe(true);
+    expect(c[1]!.text).toContain('RW30');
+    expect(c[1]!.text.trim().endsWith('V')).toBe(true);
     expect(c[2]!.text).toContain('L075');
-    expect(c[2]!.text.trim().endsWith('WX')).toBe(true);
+    expect(c[2]!.text).toContain('RW26');
+    expect(c[2]!.text.trim().endsWith('I')).toBe(true);
   });
 
   it('shows the best field per-check reasons in detail mode', () => {
@@ -107,11 +112,11 @@ describe('DIVERT view', () => {
     expect(c[2]!.text).toContain('800 ft < 1000');
   });
 
-  it('caps the list at 6 rows to respect the 8-text-container firmware limit', () => {
+  it('shows the 4 most suitable (1 header + 4 rows)', () => {
     const alternates = Array.from({ length: 10 }, (_, i) =>
       alt({ waypoint: { ident: `OM${i}${i}`, lat: 25, lon: 55 }, distanceNm: 100 + i }),
     );
     const c = buildView('DIVERT', baseState({ alternates, briefingAgeSec: 60 }));
-    expect(c).toHaveLength(7); // 1 header + 6 rows
+    expect(c).toHaveLength(5); // 1 header + 4 rows
   });
 });

@@ -29,6 +29,10 @@ export interface Alternate {
   suitable: boolean;
   /** The single recommended field (nearest suitable within range). */
   best: boolean;
+  /** Likely runway in use (into wind), set by the caller from weather data. */
+  runway?: string | null;
+  /** Forecast conditions as VMC ('V') / IMC ('I'), set by the caller. */
+  wx?: 'V' | 'I' | null;
 }
 
 export interface DiversionOptions {

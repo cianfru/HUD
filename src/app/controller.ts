@@ -16,6 +16,7 @@ import { mpsToKnots, metersToFeet } from '../core/units.js';
 import type { Position } from '../core/types.js';
 import type { BriefingStore } from '../data/briefing.js';
 import type { Minima } from '../core/taf.js';
+import { vmcImc } from '../core/suitability.js';
 import type { SuitabilityMinima } from '../core/suitability.js';
 import { HudRenderer } from '../hud/renderer.js';
 import { VIEW_ORDER } from '../hud/model.js';
@@ -177,8 +178,7 @@ export class HudController {
             bearingDeg: best.bearingDeg,
             distanceNm: best.distanceNm,
             runway: this.briefing.runwayInUse(best.waypoint.ident, now),
-            // VMC when the forecast is VFR/MVFR, IMC when IFR/LIFR, else unknown.
-            wx: cat === 'VFR' || cat === 'MVFR' ? ('V' as const) : cat === 'IFR' || cat === 'LIFR' ? ('I' as const) : null,
+            wx: vmcImc(cat),
           }
         : null;
     return {
@@ -216,13 +216,20 @@ export class HudController {
       this.diversion.minima,
     );
     const gsKt = this.position.speedMps != null ? mpsToKnots(this.position.speedMps) : null;
-    const alternates = computeAlternates(
+    const ranked = computeAlternates(
       this.position,
       this.position.trackDeg ?? null,
       gsKt,
       candidates,
       { maxRangeNm: this.diversion.maxRangeNm ?? 1000, limit: this.diversion.limit ?? 6 },
     );
+    // Enrich each with its likely runway and VMC/IMC from the cached TAF.
+    const briefing = this.briefing;
+    const alternates = ranked.map((a) => ({
+      ...a,
+      runway: briefing.runwayInUse(a.waypoint.ident, at),
+      wx: vmcImc(briefing.assess(a.waypoint.ident, at)?.category),
+    }));
     return { alternates, briefingAgeSec };
   }
 }
