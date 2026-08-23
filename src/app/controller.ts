@@ -109,10 +109,10 @@ export class HudController {
   private onGesture(g: Gesture): void {
     switch (g.type) {
       case 'swipeDown':
-        this.cycleView(1);
+        this.onSwipe(1);
         break;
       case 'swipeUp':
-        this.cycleView(-1);
+        this.onSwipe(-1);
         break;
       case 'press':
         this.onPress();
@@ -143,7 +143,25 @@ export class HudController {
     else if (h > 1700) this.criticalPhase = false;
   }
 
-  // Press: on DIVERT, step the selection cursor through the listed alternates;
+  // Swipe: normally cycles pages. On DIVERT it moves the cursor through the
+  // listed alternates, and only changes page when you swipe past either end
+  // (so scrolling the list and paging use the same natural gesture).
+  private onSwipe(dir: 1 | -1): void {
+    if (this.view !== 'DIVERT' || this.lastAltCount === 0) {
+      this.cycleView(dir);
+      return;
+    }
+    const next = this.divertSelection + dir;
+    if (this.divertExpanded) {
+      this.divertSelection = Math.max(0, Math.min(this.lastAltCount - 1, next)); // stay in the field set
+    } else if (next < 0 || next >= this.lastAltCount) {
+      this.cycleView(dir); // overshoot the ends -> change page
+    } else {
+      this.divertSelection = next;
+    }
+  }
+
+  // Press: on DIVERT also steps the cursor (a tap alternative to swiping);
   // elsewhere, the page's context action.
   private onPress(): void {
     if (this.view === 'DIVERT') {
@@ -168,6 +186,11 @@ export class HudController {
     const i = VIEW_ORDER.indexOf(this.view);
     const n = VIEW_ORDER.length;
     this.view = VIEW_ORDER[(i + dir + n) % n]!;
+    // Leaving DIVERT: reset the drill-down so it opens fresh next time.
+    if (this.view !== 'DIVERT') {
+      this.divertSelection = 0;
+      this.divertExpanded = false;
+    }
   }
 
   // --- output ---
