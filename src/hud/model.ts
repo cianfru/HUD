@@ -33,6 +33,8 @@ export interface HudState {
   alternates: Alternate[] | null;
   /** Age of the loaded briefing pack, seconds — null when no pack is loaded. */
   briefingAgeSec: number | null;
+  /** Closest usable enroute alternate + its likely (into-wind) runway, for CRUISE. */
+  closestAlternate: { ident: string; bearingDeg: number; distanceNm: number; runway: string | null } | null;
   /** When true, the DIVERT page shows the best field's per-check reasons. */
   divertDetail: boolean;
   /** Transparent suitability for the best alternate (for the detail card). */

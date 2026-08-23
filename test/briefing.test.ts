@@ -119,6 +119,21 @@ describe('BriefingStore — transparent suitability report', () => {
   });
 });
 
+describe('BriefingStore — runway in use', () => {
+  const store = new BriefingStore(pack);
+
+  it('picks the runway most into the forecast wind', () => {
+    // OMDB base wind 280; runways 121/301 -> 30 is into wind.
+    expect(store.runwayInUse('OMDB', at(5, 20))).toBe('30');
+    // OOMS wind 330; runways 083/263 -> 26 is into wind.
+    expect(store.runwayInUse('OOMS', at(5, 20))).toBe('26');
+  });
+
+  it('is null with no TAF wind or no runway headings', () => {
+    expect(store.runwayInUse('OERK', at(5, 20))).toBeNull(); // no TAF, no headings
+  });
+});
+
 describe('BriefingStore — offline diversion candidates', () => {
   const store = new BriefingStore(pack);
 

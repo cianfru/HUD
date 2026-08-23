@@ -10,7 +10,7 @@
  */
 import { parseTaf, assessTaf } from '../core/taf.js';
 import type { Assessment, Minima } from '../core/taf.js';
-import { distanceNm, initialBearingDeg } from '../core/geo.js';
+import { distanceNm, initialBearingDeg, angleDiffDeg } from '../core/geo.js';
 import type { LatLon, Waypoint } from '../core/types.js';
 import type { AlternateCandidate } from '../core/diversion.js';
 import { evaluateSuitability } from '../core/suitability.js';
@@ -123,6 +123,31 @@ export class BriefingStore {
       },
       minima,
     );
+  }
+
+  /**
+   * Likely landing runway at `ident` — the runway most into the cached TAF's
+   * wind — as a runway number string ("30", "04"), or null if wind is variable
+   * or headings are unknown. Advisory: a wind-derived best guess, not the
+   * actual assigned runway.
+   */
+  runwayInUse(ident: string, at: Date): string | null {
+    const a = this.airports.get(ident);
+    if (!a?.runwayHeadingsDeg?.length) return null;
+    const w = this.assess(ident, at)?.prevailing;
+    if (!w || w.windDirDeg == null || w.windDirDeg === 'VRB') return null;
+    const dir = w.windDirDeg;
+    let best = a.runwayHeadingsDeg[0]!;
+    let bestDiff = Math.abs(angleDiffDeg(dir, best));
+    for (const h of a.runwayHeadingsDeg) {
+      const d = Math.abs(angleDiffDeg(dir, h)); // smallest angle to wind = into wind
+      if (d < bestDiff) {
+        bestDiff = d;
+        best = h;
+      }
+    }
+    const n = Math.round(best / 10) % 36;
+    return String(n === 0 ? 36 : n).padStart(2, '0');
   }
 
   asWaypoint(ident: string): Waypoint | undefined {

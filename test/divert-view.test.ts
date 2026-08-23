@@ -15,6 +15,7 @@ function baseState(over: Partial<HudState>): HudState {
     flightStartMs: 0,
     alternates: null,
     briefingAgeSec: null,
+    closestAlternate: null,
     divertDetail: false,
     bestReport: null,
     ...over,

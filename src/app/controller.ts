@@ -153,6 +153,15 @@ export class HudController {
     const { alternates, briefingAgeSec } = this.computeDiversion(now);
     const best = alternates?.find((a) => a.best) ?? alternates?.[0];
     const report = this.briefing && best ? this.briefing.report(best.waypoint.ident, now, this.diversion.reasons) : null;
+    const closestAlternate =
+      this.briefing && best
+        ? {
+            ident: best.waypoint.ident,
+            bearingDeg: best.bearingDeg,
+            distanceNm: best.distanceNm,
+            runway: this.briefing.runwayInUse(best.waypoint.ident, now),
+          }
+        : null;
     return {
       now,
       position: this.position,
@@ -163,6 +172,7 @@ export class HudController {
       flightStartMs: this.flightStartMs,
       alternates,
       briefingAgeSec,
+      closestAlternate,
       divertDetail: this.divertDetail,
       bestReport: best && report ? { ident: best.waypoint.ident, report } : null,
     };

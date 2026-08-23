@@ -9,7 +9,7 @@
 import { SCREEN_W } from '../bridge/bridge.js';
 import type { HudContainer } from '../bridge/bridge.js';
 import { formatKnots, formatDeg, formatFeet, formatNm } from '../core/units.js';
-import { formatUtcClock, formatLocalClock, formatDuration, etaLocal } from '../core/time.js';
+import { formatDuration, etaLocal } from '../core/time.js';
 import { distanceNm } from '../core/geo.js';
 import type { HudView, HudState } from './model.js';
 
@@ -36,8 +36,6 @@ function buildCruise(s: HudState): HudContainer[] {
   const pos = s.position;
   const g = s.guidance;
 
-  const clock = s.config.clock === 'utc' ? formatUtcClock(s.now) + 'Z' : formatLocalClock(s.now);
-
   const gs = pos ? `GS ${formatKnots(pos.speedMps)}` : 'GS ---';
   const trk = pos ? `TRK ${formatDeg(pos.trackDeg)}` : 'TRK ---';
   const alt = pos ? `GPSALT ${formatFeet(pos.altitudeM)}` : 'GPSALT -----';
@@ -57,17 +55,25 @@ function buildCruise(s: HudState): HudContainer[] {
     ? `${dest.ident} ${etaLocal(s.now, g?.eteToDestSec ?? null, dest.utcOffsetMin)}`
     : '';
 
+  // Closest usable enroute alternate + likely runway in use (into wind).
+  const a = s.closestAlternate;
+  const altn = a
+    ? `ALTN ${a.ident}  ${formatDeg(a.bearingDeg)}/${formatNm(a.distanceNm)}NM` +
+      (a.runway ? `  RW${a.runway}` : '')
+    : 'ALTN ----';
+
   // Everything is kept in the TOP band — the lower part of the display obstructs
-  // the forward view, so it stays completely clear. Two lines: primaries, then a
-  // thin status line (UTC · next waypoint · destination arrival LT).
+  // the forward view, so it stays completely clear. Three lines: primaries; next
+  // waypoint + destination arrival LT; and the closest enroute alternate.
   return [
     { id: 4, x: MARGIN, y: 6, w: 180, h: 34, text: gs },
     { id: 5, x: 210, y: 6, w: 170, h: 34, text: trk },
     { id: 6, x: 384, y: 6, w: RIGHT - 384, h: 34, text: alt },
 
-    { id: 1, x: MARGIN, y: 44, w: 110, h: ROW_H, text: clock },
-    { id: 7, x: 132, y: 44, w: 250, h: ROW_H, text: nav },
-    { id: 8, x: 392, y: 44, w: RIGHT - 392, h: ROW_H, text: destEta },
+    { id: 7, x: MARGIN, y: 44, w: 240, h: ROW_H, text: nav },
+    { id: 8, x: 300, y: 44, w: RIGHT - 300, h: ROW_H, text: destEta },
+
+    { id: 1, x: MARGIN, y: 76, w: SCREEN_W - 2 * MARGIN, h: ROW_H, text: altn },
   ];
 }
 
