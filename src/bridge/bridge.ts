@@ -23,6 +23,12 @@ export interface HudContainer {
   text: string;
 }
 
+// The gestures the 0.0.13 SDK relays. On current hardware single `press` is
+// dropped, so the controller treats press/doublePress as one "activate" — see
+// controller.activate(). FUTURE: the production firmware reportedly adds a
+// long-press ("tap, hold, tap") for entering menus; when the SDK exposes that
+// event, add 'longPress' here, map it in even-sdk.ts osEventToGestureType(),
+// and it can drive the descend/enter action directly.
 export type GestureType = 'press' | 'doublePress' | 'swipeUp' | 'swipeDown';
 export type GestureSource = 'glassesL' | 'glassesR' | 'ring' | 'unknown';
 
