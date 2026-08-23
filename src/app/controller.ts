@@ -12,7 +12,7 @@ import type { GlassesBridge, Gesture, DeviceState } from '../bridge/bridge.js';
 import type { PositionSource } from '../data/position/source.js';
 import { FlightPlan } from '../core/flightplan.js';
 import { computeAlternates } from '../core/diversion.js';
-import { mpsToKnots } from '../core/units.js';
+import { mpsToKnots, metersToFeet } from '../core/units.js';
 import type { Position } from '../core/types.js';
 import type { BriefingStore } from '../data/briefing.js';
 import type { Minima } from '../core/taf.js';
@@ -124,6 +124,19 @@ export class HudController {
   }
 
   private divertDetail = false;
+  private criticalPhase = false;
+
+  /**
+   * Below 1500 ft the HUD declutters to GS only (critical phase — eyes outside).
+   * Hysteresis (enter <1500, exit >1700) so GPS-altitude noise can't flicker it.
+   * Uses GPS geometric altitude — a proxy for height; good near sea-level fields.
+   */
+  private updateCriticalPhase(): void {
+    const h = this.position?.altitudeM != null ? metersToFeet(this.position.altitudeM) : null;
+    if (h == null) return; // no height info — hold the last state
+    if (h < 1500) this.criticalPhase = true;
+    else if (h > 1700) this.criticalPhase = false;
+  }
 
   private onPress(): void {
     if (this.view === 'CRUISE') {
@@ -144,7 +157,10 @@ export class HudController {
   // --- output ---
 
   private draw(): void {
-    this.renderer.render(this.view, this.snapshot());
+    this.updateCriticalPhase();
+    // Critical phase overrides page selection — always the decluttered CRUISE.
+    const view = this.criticalPhase ? 'CRUISE' : this.view;
+    this.renderer.render(view, this.snapshot());
   }
 
   private snapshot(): HudState {
@@ -176,6 +192,7 @@ export class HudController {
       alternates,
       briefingAgeSec,
       closestAlternate,
+      criticalPhase: this.criticalPhase,
       divertDetail: this.divertDetail,
       bestReport: best && report ? { ident: best.waypoint.ident, report } : null,
     };

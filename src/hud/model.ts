@@ -44,6 +44,8 @@ export interface HudState {
     runway: string | null;
     wx: 'V' | 'I' | null;
   } | null;
+  /** Critical phase (below ~1500 ft): the HUD declutters to GS only. */
+  criticalPhase: boolean;
   /** When true, the DIVERT page shows the best field's per-check reasons. */
   divertDetail: boolean;
   /** Transparent suitability for the best alternate (for the detail card). */

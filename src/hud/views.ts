@@ -37,6 +37,13 @@ function buildCruise(s: HudState): HudContainer[] {
   const g = s.guidance;
 
   const gs = pos ? `GS ${formatKnots(pos.speedMps)}` : 'GS ---';
+
+  // Critical phase (below ~1500 ft): declutter to GS only so nothing competes
+  // with the outside view when it matters most.
+  if (s.criticalPhase) {
+    return [{ id: 4, x: MARGIN, y: 6, w: 220, h: 34, text: gs }];
+  }
+
   const trk = pos ? `TRK ${formatDeg(pos.trackDeg)}` : 'TRK ---';
   const alt = pos ? `GPSALT ${formatFeet(pos.altitudeM)}` : 'GPSALT -----';
 

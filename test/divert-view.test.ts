@@ -16,6 +16,7 @@ function baseState(over: Partial<HudState>): HudState {
     alternates: null,
     briefingAgeSec: null,
     closestAlternate: null,
+    criticalPhase: false,
     divertDetail: false,
     bestReport: null,
     ...over,
@@ -31,6 +32,21 @@ const alt = (over: Partial<Alternate>): Alternate => ({
   suitable: true,
   best: false,
   ...over,
+});
+
+describe('CRUISE view — critical phase', () => {
+  const pos = { lat: 25, lon: 55, speedMps: 100, trackDeg: 90, altitudeM: 300, timestamp: 0 };
+
+  it('declutters to GS only below 1500 ft', () => {
+    const c = buildView('CRUISE', baseState({ position: pos, criticalPhase: true }));
+    expect(c).toHaveLength(1);
+    expect(c[0]!.text).toMatch(/^GS /);
+  });
+
+  it('shows the full page when not in critical phase', () => {
+    const c = buildView('CRUISE', baseState({ position: pos, criticalPhase: false }));
+    expect(c.length).toBeGreaterThan(1);
+  });
 });
 
 describe('DIVERT view', () => {
