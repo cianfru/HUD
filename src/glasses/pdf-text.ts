@@ -5,9 +5,14 @@
  * a PDF is actually dropped.
  */
 import * as pdfjs from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker&inline';
 
-pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+// Inline the worker as a Blob-backed module worker instead of pointing pdf.js at
+// a worker URL. A packaged .ehpk is served by the Even WebView's own file
+// server, which returns .mjs as text/plain; pdf.js then fails to start the
+// worker ("text/plain is not a valid JavaScript MIME type"). An inlined Blob
+// worker carries the correct type and needs no fetch, so it works offline.
+pdfjs.GlobalWorkerOptions.workerPort = new PdfWorker();
 
 /** Extract text from a PDF, reassembling lines from item Y positions. */
 export async function pdfToText(data: ArrayBuffer): Promise<string> {

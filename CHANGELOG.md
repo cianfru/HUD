@@ -5,6 +5,17 @@ All notable changes to the Even G2 Aviation HUD.
 This is a **personal, supplemental, experimental** tool — not a certified
 instrument, not part of the aircraft, and never a primary reference.
 
+## v0.3.1 — 2026-08-30
+
+### Fixed
+- **OFP PDF upload failed on the installed app** ("Setting up fake worker
+  failed. text/plain is not a valid JavaScript MIME type"). A packaged `.ehpk`
+  is served by the Even WebView's own file server, which returns the pdf.js
+  worker `.mjs` as `text/plain`, so pdf.js refused to start it. The worker is now
+  **inlined as a Blob-backed module worker** — no separate file, no MIME
+  dependency — so the "drop the OFP PDF" flow works offline from the installed
+  app, not just over the dev server.
+
 ## v0.3.0 — 2026-08-23
 
 First build packaged for standalone install (`.ehpk`) rather than QR dev-serve.

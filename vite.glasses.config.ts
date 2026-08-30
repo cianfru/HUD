@@ -10,6 +10,9 @@ export default defineConfig({
   // Relative asset paths so the built bundle works inside an .ehpk package
   // (mounted at an arbitrary path in the Even WebView), not just at a URL root.
   base: './',
+  // The pdf.js worker is an ES module; emit inlined workers in ES format so the
+  // "drop the OFP PDF" flow works from a packaged .ehpk (see pdf-text.ts).
+  worker: { format: 'es' },
   build: {
     outDir: resolve(__dirname, 'dist-glasses'),
     emptyOutDir: true,
