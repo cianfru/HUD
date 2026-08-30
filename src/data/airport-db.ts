@@ -15,10 +15,12 @@ type Row = [string, number, number, string, number, number, number, number[]];
 interface DbFile {
   fmt: string[];
   airports: Row[];
+  /** Legacy-ident -> current-id, so an old code still resolves (UTTT -> UZTT). */
+  aliases?: Record<string, string>;
 }
 
 const byId = new Map<string, BriefingAirport>();
-for (const [ident, lat, lon, name, elevFt, rwyFt, hard, hdgs] of (raw as DbFile).airports) {
+for (const [ident, lat, lon, name, elevFt, rwyFt, hard, hdgs] of (raw as unknown as DbFile).airports) {
   byId.set(ident, {
     ident,
     name,
@@ -31,13 +33,20 @@ for (const [ident, lat, lon, name, elevFt, rwyFt, hard, hdgs] of (raw as DbFile)
   });
 }
 
+const aliases = new Map<string, string>(Object.entries((raw as unknown as DbFile).aliases ?? {}));
+
 export function dbAirportCount(): number {
   return byId.size;
 }
 
-/** Look up a bundled airport by ICAO ident (case-insensitive). */
+/** Look up a bundled airport by ICAO ident (case-insensitive), following the
+ *  legacy-code alias table when a reassigned code is typed (e.g. UTTT -> UZTT). */
 export function dbAirport(ident: string): BriefingAirport | undefined {
-  return byId.get(ident.trim().toUpperCase());
+  const id = ident.trim().toUpperCase();
+  const hit = byId.get(id);
+  if (hit) return hit;
+  const aliased = aliases.get(id);
+  return aliased ? byId.get(aliased) : undefined;
 }
 
 const M_PER_FT = 0.3048;

@@ -48,13 +48,21 @@ async function main() {
   console.log('[airport-db] fetching airports…');
   const ap = await csv(AP);
   const want = new Set(['large_airport', 'medium_airport']);
-  const byId = new Map();
+  // Key by the OurAirports `ident` — that is what runways.csv joins on. The
+  // OUTPUT id is the current ICAO (icao_code) when present, which can differ
+  // from the legacy ident (e.g. Uzbekistan's UTTT was reassigned to UZTT, and
+  // OurAirports now carries icao_code=UZTT, ident=UTTT). Keying by ident keeps
+  // the runway join working; storing by icao_code matches what OFPs/charts use.
+  const byIdent = new Map();
   for (const r of ap.rows) {
     if (!want.has(r[ap.i('type')])) continue;
-    const id = (r[ap.i('icao_code')] || r[ap.i('ident')] || '').toUpperCase();
+    const ident = (r[ap.i('ident')] || '').toUpperCase();
+    const icao = (r[ap.i('icao_code')] || '').toUpperCase();
+    const id = /^[A-Z]{4}$/.test(icao) ? icao : ident;
     if (!/^[A-Z]{4}$/.test(id)) continue;
-    byId.set(id, {
+    byIdent.set(ident, {
       id,
+      ident,
       lat: Math.round(+r[ap.i('latitude_deg')] * 1e4) / 1e4,
       lon: Math.round(+r[ap.i('longitude_deg')] * 1e4) / 1e4,
       name: (r[ap.i('name')] || '').slice(0, 40),
@@ -69,7 +77,7 @@ async function main() {
   const rwy = await csv(RWY);
   for (const r of rwy.rows) {
     if (r[rwy.i('closed')] === '1') continue;
-    const a = byId.get((r[rwy.i('airport_ident')] || '').toUpperCase());
+    const a = byIdent.get((r[rwy.i('airport_ident')] || '').toUpperCase());
     if (!a) continue;
     const len = +r[rwy.i('length_ft')];
     if (Number.isFinite(len) && len > a.rwyFt) a.rwyFt = Math.round(len);
@@ -80,17 +88,31 @@ async function main() {
     }
   }
 
-  // Keep only fields with a real runway (usable as an alternate).
-  const airports = [...byId.values()]
-    .filter((a) => a.rwyFt > 0)
-    .map((a) => [a.id, a.lat, a.lon, a.name, a.elev, a.rwyFt, a.hard, [...a.hdgs].sort((x, y) => x - y)]);
+  // Keep every large/medium field. A field with no runway data (rwyFt 0) still
+  // resolves as a destination (position/name); it just won't be offered as an
+  // A320 alternate, which needs a known runway length + hard surface.
+  const airports = [...byIdent.values()].map((a) => [
+    a.id, a.lat, a.lon, a.name, a.elev, a.rwyFt, a.hard, [...a.hdgs].sort((x, y) => x - y),
+  ]);
+
+  // Legacy-code aliases: where the current ICAO differs from the OurAirports
+  // ident, let the old ident resolve too (so typing UTTT still finds UZTT),
+  // unless the old ident is itself a primary id for another field.
+  const primary = new Set(airports.map((a) => a[0]));
+  const aliases = {};
+  for (const a of byIdent.values()) {
+    if (a.id !== a.ident && /^[A-Z]{4}$/.test(a.ident) && !primary.has(a.ident)) aliases[a.ident] = a.id;
+  }
 
   const out = {
     fmt: ['ident', 'lat', 'lon', 'name', 'elevFt', 'longestRwyFt', 'hard', 'headings'],
     airports,
+    aliases,
   };
   writeFileSync(OUT, JSON.stringify(out));
-  console.log(`[airport-db] wrote ${OUT}: ${airports.length} airports`);
+  console.log(
+    `[airport-db] wrote ${OUT}: ${airports.length} airports, ${Object.keys(aliases).length} aliases`,
+  );
 }
 
 main().catch((e) => {

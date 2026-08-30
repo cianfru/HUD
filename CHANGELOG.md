@@ -5,6 +5,20 @@ All notable changes to the Even G2 Aviation HUD.
 This is a **personal, supplemental, experimental** tool — not a certified
 instrument, not part of the aircraft, and never a primary reference.
 
+## v0.3.2 — 2026-08-30
+
+### Fixed
+- **Destination airport missing after loading an OFP** (e.g. Doha → Tashkent).
+  Two causes: (1) the bundled airport database keyed fields by their current
+  ICAO code but joined runway data on OurAirports' legacy ident, so reassigned
+  codes (Uzbekistan's UTTT is now **UZTT**) lost their runways and were dropped
+  entirely; (2) fields with no runway data were discarded even as destinations.
+  The database is rebuilt so every large/medium field is kept (a runway-less
+  field still resolves as a destination position), stored under its **current
+  ICAO code** (matching the OFP), with **legacy-code aliases** (typing UTTT
+  still finds UZTT). Tashkent, Samarkand and 50-odd other reassigned fields now
+  resolve. Database: 4,981 airports + 55 aliases.
+
 ## v0.3.1 — 2026-08-30
 
 ### Fixed
