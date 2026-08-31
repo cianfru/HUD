@@ -116,8 +116,13 @@ export function eventToGesture(event: EvenHubEvent): Gesture | null {
   return { type, source: sourceOf(sys?.eventSource) };
 }
 
+// Codes 9/10 (long-press begin / release) exist on the firmware and SDK >= 0.0.14
+// but not in the 0.0.13 type enum, so match on the raw numeric value.
+const LONG_PRESS = 9;
+const LONG_PRESS_RELEASE = 10;
+
 function osEventToGestureType(e: OsEventTypeList | undefined): GestureType | null {
-  switch (e) {
+  switch (e as number | undefined) {
     case OsEventTypeList.CLICK_EVENT:
       return 'press';
     case OsEventTypeList.DOUBLE_CLICK_EVENT:
@@ -126,6 +131,10 @@ function osEventToGestureType(e: OsEventTypeList | undefined): GestureType | nul
       return 'swipeUp';
     case OsEventTypeList.SCROLL_BOTTOM_EVENT:
       return 'swipeDown';
+    case LONG_PRESS:
+      return 'longPress';
+    case LONG_PRESS_RELEASE:
+      return 'longPressRelease';
     default:
       return null;
   }

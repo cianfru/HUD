@@ -41,9 +41,10 @@ function buildCruise(s: HudState): HudContainer[] {
   const stale = s.gpsStale;
   const gs = !pos ? 'GS ---' : stale ? 'GS --- GPS?' : `GS ${formatKnots(pos.speedMps)}`;
 
-  // Critical phase (below ~1500 ft): declutter to GS only so nothing competes
-  // with the outside view when it matters most.
-  if (s.criticalPhase) {
+  // Declutter: minimal by default (GS only) so nothing competes with the
+  // outside view. A long-press reveals the full strip while held; a tap latches
+  // it. Kept minimal automatically in a critical phase (low/slow).
+  if (!s.cruiseFull) {
     return [{ id: 4, x: MARGIN, y: 6, w: 260, h: 34, text: gs }];
   }
 
@@ -248,6 +249,7 @@ function buildSettings(s: HudState): HudContainer[] {
     lines.push(`${marker}${r}`);
   });
   lines.push('Swipe: CRUISE - DIVERT - DEST - SETTINGS');
+  lines.push('CRUISE: hold = peek info, 2tap = keep it on');
   return lines.map((text, i) => ({
     id: 1 + i,
     x: MARGIN,

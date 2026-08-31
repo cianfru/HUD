@@ -130,6 +130,12 @@ export class HudController {
         // single tap from a double tap.
         this.activate();
         break;
+      case 'longPress':
+        this.revealHold = true; // hold to reveal the full CRUISE strip
+        break;
+      case 'longPressRelease':
+        this.revealHold = false; // release -> back to the minimal strip
+        break;
     }
     this.draw();
   }
@@ -148,6 +154,11 @@ export class HudController {
   private lastActivateMs = 0;
   private lastFixWallMs = 0;
   private criticalPhase = false;
+  // CRUISE declutter: the strip is minimal (GS only) by default. A long-press
+  // reveals the full strip while held; a tap latches it on. Both are suppressed
+  // in a critical phase (low/slow), where the strip stays minimal regardless.
+  private revealHold = false;
+  private revealLatch = false;
 
   /** No fix for this long -> mark GPS stale so old GS/track aren't trusted. */
   private static readonly GPS_STALE_MS = 5000;
@@ -201,14 +212,16 @@ export class HudController {
     this.lastActivateMs = t;
 
     if (this.focus === 'page') {
-      // Enter the page's detail. CRUISE/DEST have none — they show everything.
       if (this.view === 'DIVERT' && this.lastAltCount > 0) {
-        this.focus = 'detail';
+        this.focus = 'detail'; // enter the weather browser
         this.divertSelection = 0;
       } else if (this.view === 'SETTINGS') {
         this.focus = 'list';
         this.settingsSelection = 0;
+      } else if (this.view === 'CRUISE') {
+        this.revealLatch = !this.revealLatch; // latch the full strip on/off
       }
+      // DEST has no detail — it shows everything already.
       return;
     }
     if (this.view === 'DIVERT' && this.focus === 'detail') {
@@ -241,6 +254,7 @@ export class HudController {
     this.focus = 'page';
     this.divertSelection = 0;
     this.settingsSelection = 0;
+    this.revealHold = false; // a page swipe isn't a held finger
   }
 
   // --- output ---
@@ -318,7 +332,10 @@ export class HudController {
       alternates,
       briefingAgeSec,
       closestAlternate,
-      criticalPhase: this.criticalPhase,
+      // Full CRUISE strip only when revealed (held or latched), and never in a
+      // critical phase — where it stays minimal so nothing competes with the
+      // outside view. A momentary long-press hold still peeks past the latch.
+      cruiseFull: this.revealHold || (this.revealLatch && !this.criticalPhase),
       gpsStale:
         this.position != null &&
         this.lastFixWallMs > 0 &&

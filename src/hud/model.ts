@@ -53,8 +53,9 @@ export interface HudState {
     runway: string | null;
     wx: 'V' | 'I' | null;
   } | null;
-  /** Critical phase (below ~1500 ft): the HUD declutters to GS only. */
-  criticalPhase: boolean;
+  /** CRUISE strip: true shows the full strip, false shows GS only (declutter).
+   *  Driven by hold-to-reveal / tap-to-latch, suppressed in a critical phase. */
+  cruiseFull: boolean;
   /** True when there is a last fix but none recently — GS/track are not current. */
   gpsStale: boolean;
   /** Navigation depth within the current page (page carousel / list / detail). */

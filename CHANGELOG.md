@@ -5,6 +5,28 @@ All notable changes to the Even G2 Aviation HUD.
 This is a **personal, supplemental, experimental** tool — not a certified
 instrument, not part of the aircraft, and never a primary reference.
 
+## v0.4.0 — 2026-08-31
+
+### Added — hold-to-reveal declutter (CRUISE)
+- CRUISE is now **minimal by default** (ground speed only), so nothing sits in
+  your central vision unless you ask for it. Uses the firmware's long-press:
+  - **Hold** (tap-then-long-press) reveals the full strip — track, GPS alt,
+    closest alternate, destination arrival LT — **while held**;
+  - **release** returns to the minimal strip;
+  - **tap** latches the full strip on (tap again to turn it off).
+  - The full strip is auto-suppressed in a critical phase (low/slow); a
+    momentary hold still peeks past it.
+- Long-press events (`LONG_PRESS_EVENT` / `LONG_PRESS_RELEASE_EVENT`, codes
+  9/10) are now decoded from the touch bridge.
+
+### Notes on screen-off operation
+- Reviewed the Even background-lifecycle docs: on iOS the WebView keeps running
+  when backgrounded, but **`startAppLocationUpdates` stops when the WebView is
+  suspended**, and there is **no background-location mode**. So continuous GPS
+  with the phone screen off is **not possible with the current SDK** — the
+  screen wake lock (v0.3.3) remains the correct approach. Recommended in-cockpit
+  setup: phone on ship's power, screen brightness at minimum, face-down.
+
 ## v0.3.3 — 2026-08-31
 
 ### Fixed — GPS reliability (from the first in-aircraft trial)
