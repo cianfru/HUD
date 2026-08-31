@@ -35,16 +35,20 @@ function buildCruise(s: HudState): HudContainer[] {
   const pos = s.position;
   const g = s.guidance;
 
-  const gs = pos ? `GS ${formatKnots(pos.speedMps)}` : 'GS ---';
+  // GPS stale (a last fix but nothing recent): don't show a frozen ground speed
+  // as if it were live — blank the values and flag it, so a dropped feed reads
+  // as a dropped feed, not as valid data.
+  const stale = s.gpsStale;
+  const gs = !pos ? 'GS ---' : stale ? 'GS --- GPS?' : `GS ${formatKnots(pos.speedMps)}`;
 
   // Critical phase (below ~1500 ft): declutter to GS only so nothing competes
   // with the outside view when it matters most.
   if (s.criticalPhase) {
-    return [{ id: 4, x: MARGIN, y: 6, w: 220, h: 34, text: gs }];
+    return [{ id: 4, x: MARGIN, y: 6, w: 260, h: 34, text: gs }];
   }
 
-  const trk = pos ? `TRK ${formatDeg(pos.trackDeg)}` : 'TRK ---';
-  const alt = pos ? `GPSALT ${formatFeet(pos.altitudeM)}` : 'GPSALT -----';
+  const trk = !pos || stale ? 'TRK ---' : `TRK ${formatDeg(pos.trackDeg)}`;
+  const alt = !pos || stale ? 'GPSALT -----' : `GPSALT ${formatFeet(pos.altitudeM)}`;
 
   // No next-waypoint here — that's on the ND. CRUISE adds what the ND doesn't:
   // the closest usable enroute alternate (runway in use + VMC/IMC) on the left,
@@ -52,11 +56,13 @@ function buildCruise(s: HudState): HudContainer[] {
   const a = s.closestAlternate;
   const altn = !pos
     ? 'NO GPS'
-    : a
-      ? `ALTN ${a.ident} ${formatDeg(a.bearingDeg)}/${Math.round(a.distanceNm)}NM` +
-        (a.runway ? ` RW${a.runway}` : '') +
-        (a.wx ? ` ${a.wx}` : '')
-      : 'ALTN ----';
+    : stale
+      ? 'GPS STALE - reconnecting'
+      : a
+        ? `ALTN ${a.ident} ${formatDeg(a.bearingDeg)}/${Math.round(a.distanceNm)}NM` +
+          (a.runway ? ` RW${a.runway}` : '') +
+          (a.wx ? ` ${a.wx}` : '')
+        : 'ALTN ----';
 
   const dest = s.plan.destination;
   const destText =

@@ -5,6 +5,33 @@ All notable changes to the Even G2 Aviation HUD.
 This is a **personal, supplemental, experimental** tool — not a certified
 instrument, not part of the aircraft, and never a primary reference.
 
+## v0.3.3 — 2026-08-31
+
+### Fixed — GPS reliability (from the first in-aircraft trial)
+- **Screen wake lock**: the HUD froze at altitude when the phone screen slept
+  (iOS suspends the WebView and its location feed). The app now holds a screen
+  wake lock and re-acquires it when it returns to the foreground, so the display
+  and the GLO feed keep running.
+- **Self-healing GLO feed**: the location subscription is now watched — if fixes
+  stop arriving (BLE hiccup, backgrounding, momentary GPS loss) it re-subscribes
+  and re-arms location updates automatically, instead of freezing on the last
+  fix until the app is restarted.
+- **Rebuild on reconnect**: a dropped-then-restored BLE link to the glasses now
+  forces a full page rebuild, so the display comes back instead of pushing
+  updates to containers that no longer exist.
+- **GPS-stale indicator**: when there's a last fix but nothing recent, CRUISE
+  shows `GS --- GPS?` and `GPS STALE - reconnecting` rather than a frozen ground
+  speed, so a dropped feed reads as dropped, not as valid data.
+- **Guarded render loop**: one bad frame can no longer wedge the periodic
+  redraw.
+
+### Changed
+- **Arrival local time for any destination**: when a field isn't in the curated
+  time-zone table, the DEST/CRUISE arrival LT is now estimated from longitude
+  (whole hours) instead of showing blank. This ignores DST and political
+  time-zone boundaries, so it can be an hour off in DST-observing regions —
+  a proper per-airport time zone is a follow-up.
+
 ## v0.3.2 — 2026-08-30
 
 ### Fixed

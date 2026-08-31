@@ -98,12 +98,18 @@ export class HudController {
 
   private onFix(fix: Position): void {
     this.position = fix;
+    this.lastFixWallMs = this.now();
     if (this.config.autoSequence) this.plan.autoSequence(fix);
     this.draw();
   }
 
   private onDeviceState(s: DeviceState): void {
+    const wasConnected = this.device.connected;
     this.device = s;
+    // A dropped-then-restored BLE link loses the on-glasses page, so partial
+    // text updates would target containers that no longer exist. Force a full
+    // rebuild on reconnect so the display comes back.
+    if (!wasConnected && s.connected) this.renderer.invalidate();
     this.draw();
   }
 
@@ -140,7 +146,11 @@ export class HudController {
   private settingsSelection = 0;
   private lastAltCount = 0;
   private lastActivateMs = 0;
+  private lastFixWallMs = 0;
   private criticalPhase = false;
+
+  /** No fix for this long -> mark GPS stale so old GS/track aren't trusted. */
+  private static readonly GPS_STALE_MS = 5000;
 
   // SETTINGS rows, in order: two toggles then a Back row (activating Back exits).
   private static readonly SETTINGS_CLOCK = 0;
@@ -236,10 +246,14 @@ export class HudController {
   // --- output ---
 
   private draw(): void {
-    this.updateCriticalPhase();
-    // Declutter affects only the CRUISE page (GS-only); pages stay navigable so
-    // the alternates and their weather can be checked any time, incl. on ground.
-    this.renderer.render(this.view, this.snapshot());
+    // Guard the whole frame: a single bad render (unexpected fix shape, a send
+    // rejection) must never wedge the periodic loop and freeze the display.
+    try {
+      this.updateCriticalPhase();
+      this.renderer.render(this.view, this.snapshot());
+    } catch (e) {
+      console.error('[HUD] draw failed:', e);
+    }
   }
 
   private snapshot(): HudState {
@@ -305,6 +319,10 @@ export class HudController {
       briefingAgeSec,
       closestAlternate,
       criticalPhase: this.criticalPhase,
+      gpsStale:
+        this.position != null &&
+        this.lastFixWallMs > 0 &&
+        this.now() - this.lastFixWallMs > HudController.GPS_STALE_MS,
       focus: this.focus,
       divertSelection: sel,
       settingsSelection: this.settingsSelection,

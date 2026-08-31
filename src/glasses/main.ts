@@ -62,18 +62,52 @@ function saveAndReload(flight: StoredFlight): void {
   location.reload();
 }
 
+/** Destination UTC offset (minutes) for arrival local time: the curated navdata
+ *  table when known, else a whole-hour estimate from longitude so every field
+ *  gets a local time. The longitude estimate ignores DST and political time-zone
+ *  boundaries, so it can be an hour off in DST-observing regions. */
+function destOffsetMin(dest: Waypoint, ades?: string): number | undefined {
+  const tabled = ades ? AIRPORTS[ades]?.utcOffsetMin : undefined;
+  if (tabled != null) return tabled;
+  if (Number.isFinite(dest.lon)) return Math.round(dest.lon / 15) * 60;
+  return undefined;
+}
+
 /** Route waypoints for the flight plan; the destination carries its UTC offset
- *  (for arrival local time) when it is a known field. */
+ *  (for arrival local time). */
 function routeWaypoints(store: BriefingStore, adep?: string, ades?: string): Waypoint[] {
   const wps: Waypoint[] = [];
   const dep = adep ? store.asWaypoint(adep) : undefined;
   const dest = ades ? store.asWaypoint(ades) : undefined;
   if (dep) wps.push(dep);
   if (dest) {
-    const off = ades ? AIRPORTS[ades]?.utcOffsetMin : undefined;
+    const off = destOffsetMin(dest, ades);
     wps.push(off != null ? { ...dest, utcOffsetMin: off } : dest);
   }
   return wps;
+}
+
+/**
+ * Hold a screen wake lock so iOS doesn't sleep the display and suspend our JS +
+ * location feed mid-flight (the HUD froze at altitude when the screen slept).
+ * Re-acquired whenever the page becomes visible again. No-op where unsupported.
+ */
+async function keepAwake(): Promise<void> {
+  const wl = (navigator as Navigator & { wakeLock?: { request(t: 'screen'): Promise<unknown> } }).wakeLock;
+  if (!wl?.request) return;
+  let lock: { release?: () => void } | null = null;
+  const acquire = async (): Promise<void> => {
+    try {
+      lock = (await wl.request('screen')) as { release?: () => void };
+    } catch (e) {
+      console.warn('[glasses] wake lock unavailable:', e);
+    }
+  };
+  await acquire();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !lock) void acquire();
+    if (document.visibilityState === 'hidden') lock = null;
+  });
 }
 
 function updateLoaded(): void {
@@ -212,4 +246,5 @@ async function boot(): Promise<void> {
 
 wireForm();
 updateLoaded();
+void keepAwake();
 boot().catch((err) => status(`failed to start: ${String(err)}`));

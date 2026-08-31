@@ -55,6 +55,8 @@ export interface HudState {
   } | null;
   /** Critical phase (below ~1500 ft): the HUD declutters to GS only. */
   criticalPhase: boolean;
+  /** True when there is a last fix but none recently — GS/track are not current. */
+  gpsStale: boolean;
   /** Navigation depth within the current page (page carousel / list / detail). */
   focus: HudFocus;
   /** DIVERT list: index of the highlighted alternate (swipe moves it in 'list'). */

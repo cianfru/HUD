@@ -17,6 +17,7 @@ function baseState(over: Partial<HudState>): HudState {
     briefingAgeSec: null,
     closestAlternate: null,
     criticalPhase: false,
+    gpsStale: false,
     focus: 'page',
     divertSelection: 0,
     settingsSelection: 0,
