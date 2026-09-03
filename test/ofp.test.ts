@@ -129,3 +129,22 @@ describe('extractOfp — Lido/QR section layout', () => {
     expect(omsj.metarRaw).toBe('OMSJ 042100Z 12006KT CAVOK 36/18 Q0999 NOSIG');
   });
 });
+
+describe('extractOfp — planned distance for ETA', () => {
+  it('reads GND DIST (preferred) and AIR DIST from the fuel block', () => {
+    const ofp = `
+      OTHH/16R  UZTT/26R
+                        FUEL   TIME   FUEL ADJ   GND DIST           1883
+      TRIP             11344   0418   ........   AIR DIST           1879
+    `;
+    const x = extractOfp(ofp);
+    expect(x.groundDistanceNm).toBe(1883);
+    expect(x.airDistanceNm).toBe(1879);
+  });
+
+  it('ignores out-of-range or absent distances', () => {
+    const x = extractOfp('OTHH EDDF\nno distance figures here');
+    expect(x.groundDistanceNm).toBeUndefined();
+    expect(x.airDistanceNm).toBeUndefined();
+  });
+});

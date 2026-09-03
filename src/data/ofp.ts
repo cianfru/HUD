@@ -48,6 +48,11 @@ export interface OfpExtract {
   airports: OfpAirport[];
   /** Raw ICAO field-15 route tokens, if a route line was located. */
   routeTokens: string[];
+  /** Planned ground distance (NM) from the OFP — the real routed distance,
+   *  including detours, not the great-circle dep->dest. Used for ETA. */
+  groundDistanceNm?: number;
+  /** Planned air distance (NM) — fallback for ETA when ground distance is absent. */
+  airDistanceNm?: number;
   warnings: string[];
 }
 
@@ -149,6 +154,7 @@ export function extractOfp(text: string, opts: OfpOptions = {}): OfpExtract {
   };
 
   parseSummaryRoute(lines, out, isAirport);
+  parseDistances(lines, out);
   parseWeatherSections(lines, out, isAirport, addAll, pushUniq);
   // The generic anchored scan is for inline-style OFPs that lack the section
   // layout. Running it over a section-style OFP would sweep in every airport
@@ -173,6 +179,26 @@ export function extractOfp(text: string, opts: OfpOptions = {}): OfpExtract {
   if (!out.ades) out.warnings.push('no destination aerodrome (ADES) found');
 
   return out;
+}
+
+/**
+ * Planned route distance from the OFP fuel/summary block: "GND DIST  1883" and
+ * "AIR DIST  1879". This is the real routed distance (incl. detours), so ETA
+ * scales off it rather than the great-circle dep->dest. Scanned per line so a
+ * label can't match a number on a different line; sanity-bounded to NM.
+ */
+function parseDistances(lines: string[], out: OfpExtract): void {
+  const ok = (n: number): number | undefined => (n >= 30 && n <= 20000 ? n : undefined);
+  for (const l of lines) {
+    if (out.groundDistanceNm == null) {
+      const m = l.match(/\b(?:GND|GROUND)\s*DIST\b[^0-9]{0,12}(\d{2,5})/i);
+      if (m) out.groundDistanceNm = ok(parseInt(m[1]!, 10));
+    }
+    if (out.airDistanceNm == null) {
+      const m = l.match(/\bAIR\s*DIST\b[^0-9]{0,12}(\d{2,5})/i);
+      if (m) out.airDistanceNm = ok(parseInt(m[1]!, 10));
+    }
+  }
 }
 
 /** Lido/QR one-liner: "ROUTE: OTHH - OMSJ ALTN:OOMS OTHH" (+ field-15 beneath). */

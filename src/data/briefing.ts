@@ -42,6 +42,9 @@ export interface BriefingPack {
   /** When the pack was pulled on the ground (ISO). All TAF times resolve against this. */
   createdAt: string;
   route?: string;
+  /** Planned route distance (NM) from the OFP — real routed distance incl.
+   *  detours, used to scale ETA off the flown route rather than a straight line. */
+  routeDistanceNm?: number;
   airports: BriefingAirport[];
   weather: BriefingWx[];
 }

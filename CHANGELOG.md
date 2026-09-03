@@ -5,6 +5,18 @@ All notable changes to the Even G2 Aviation HUD.
 This is a **personal, supplemental, experimental** tool — not a certified
 instrument, not part of the aircraft, and never a primary reference.
 
+## v0.4.1 — 2026-09-03
+
+### Fixed — arrival time now uses the OFP's routed distance
+- Estimated landing time was computed from the great-circle dep→dest distance,
+  which badly underestimates when the real routing detours (e.g. Tashkent→Doha
+  routing around Iran via Afghanistan). The OFP's planned **`GND DIST`** (ground
+  distance, with `AIR DIST` as fallback) is now read and used to scale the ETA
+  off the actual routed distance. On the OTHH→UZTT OFP: great-circle 1302 NM vs
+  planned 1883 NM — the ETA was ~1.2 h optimistic and is now correct.
+- Typed dep/dest routes (no OFP) still use the straight-line estimate, since no
+  planned distance is available.
+
 ## v0.4.0 — 2026-08-31
 
 ### Added — hold-to-reveal declutter (CRUISE)

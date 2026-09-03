@@ -18,6 +18,13 @@ export class FlightPlan {
   readonly waypoints: Waypoint[];
   /** Index of the active "TO" waypoint. The "FROM" waypoint is the previous one. */
   private activeIndex: number;
+  /**
+   * Planned total route distance (NM) from the OFP, when known. For a direct
+   * dep->dest plan this scales the straight-line remaining up to the real routed
+   * distance (which includes detours around airspace), so the ETA reflects the
+   * flown route, not a great-circle shortcut.
+   */
+  plannedDistanceNm?: number;
 
   constructor(waypoints: Waypoint[], activeIndex = 1) {
     this.waypoints = waypoints;
@@ -113,6 +120,21 @@ export class FlightPlan {
       distToDest += distanceNm(this.waypoints[i]!, this.waypoints[i + 1]!);
     }
 
+    // Direct dep->dest plans understate the distance when the real routing
+    // detours (e.g. avoiding airspace). If the OFP's planned distance is known,
+    // scale the straight-line remaining by the route's overall stretch factor so
+    // the ETA matches the flown route. Plans with real intermediate legs already
+    // sum their legs, so they are left untouched.
+    let remainingNm = distToDest;
+    if (this.plannedDistanceNm && this.waypoints.length <= 2) {
+      const dep = this.waypoints[0];
+      const dest = this.destination;
+      if (dep && dest) {
+        const direct = distanceNm(dep, dest);
+        if (direct > 0) remainingNm = distToDest * Math.max(1, this.plannedDistanceNm / direct);
+      }
+    }
+
     return {
       activeWaypoint: active,
       legFrom: from,
@@ -120,8 +142,8 @@ export class FlightPlan {
       distToActiveNm: distToActive,
       xtkNm: xtk,
       eteToActiveSec: eteSeconds(distToActive, gsKt),
-      distToDestNm: distToDest,
-      eteToDestSec: eteSeconds(distToDest, gsKt),
+      distToDestNm: remainingNm,
+      eteToDestSec: eteSeconds(remainingNm, gsKt),
     };
   }
 }

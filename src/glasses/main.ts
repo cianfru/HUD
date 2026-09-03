@@ -219,6 +219,8 @@ async function boot(): Promise<void> {
     // Real flight: GLO/phone GPS + the pack the pilot set up.
     briefing = new BriefingStore(flight.pack);
     plan = new FlightPlan(routeWaypoints(briefing, flight.adep, flight.ades));
+    // Scale ETA off the OFP's planned (routed) distance, not the great circle.
+    plan.plannedDistanceNm = flight.pack.routeDistanceNm;
     source = new SdkPositionSource(sdk);
     status(`flying ${flight.adep ?? '?'} → ${flight.ades ?? '?'} — live GPS`);
   } else {

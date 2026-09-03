@@ -54,6 +54,7 @@ export function packFromOfp(ofpText: string, at: Date = new Date()): BuiltFlight
     version: 1,
     createdAt: at.toISOString(),
     route: idents.filter((id) => have.has(id)).join(' '),
+    routeDistanceNm: x.groundDistanceNm ?? x.airDistanceNm,
     airports,
     weather,
   };
