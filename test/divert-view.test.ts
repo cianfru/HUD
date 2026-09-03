@@ -11,7 +11,7 @@ function baseState(over: Partial<HudState>): HudState {
     guidance: null,
     plan: new FlightPlan([]),
     device: { connected: true },
-    config: { clock: 'utc', autoSequence: true },
+    config: { clock: 'utc', autoSequence: true, brightness: 3 },
     flightStartMs: 0,
     alternates: null,
     briefingAgeSec: null,
@@ -116,12 +116,14 @@ describe('DIVERT view', () => {
           report,
           metarRaw: 'OMDB 231600Z 30012KT CAVOK 38/12 Q0998 NOSIG',
           tafRaw: 'TAF OMDB 231100Z 2312/2418 31012KT CAVOK',
+          atisMhz: 126.85,
         },
       }),
     );
     expect(c[0]!.text).toMatch(/^OMDB 1\/2/); // ident + position in the browser
     expect(c[0]!.text).toContain('GO');
-    expect(c[0]!.text).toContain('2TAP=BACK');
+    expect(c[1]!.text).toContain('ATIS 126.85'); // ATIS + back hint on line 2
+    expect(c[1]!.text).toContain('2TAP=BACK');
     expect(c.some((x) => x.text.includes('30012KT CAVOK'))).toBe(true); // raw METAR
     expect(c.some((x) => x.text.includes('2312/2418'))).toBe(true); // raw TAF
   });

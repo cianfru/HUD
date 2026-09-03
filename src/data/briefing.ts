@@ -28,6 +28,12 @@ export interface BriefingAirport {
   hardSurface?: boolean;
   /** True runway headings (deg) across the field's runways — for crosswind. */
   runwayHeadingsDeg?: number[];
+  /** Each runway end: [designator e.g. "16L", true heading deg] — for L/R in use. */
+  runways?: Array<[string, number]>;
+  /** IANA time zone (e.g. "Asia/Tashkent") for DST-correct arrival local time. */
+  tz?: string;
+  /** ATIS frequency (MHz), when published. */
+  atisMhz?: number;
 }
 
 export interface BriefingWx {
@@ -130,26 +136,44 @@ export class BriefingStore {
 
   /**
    * Likely landing runway at `ident` — the runway most into the cached TAF's
-   * wind — as a runway number string ("30", "04"), or null if wind is variable
-   * or headings are unknown. Advisory: a wind-derived best guess, not the
-   * actual assigned runway.
+   * wind — as a designator string ("30", "26L", or "08L/R" for a parallel pair),
+   * or null if wind is variable or runways are unknown. Advisory: a wind-derived
+   * best guess, not the actual assigned runway (which comes from ATIS).
    */
   runwayInUse(ident: string, at: Date): string | null {
     const a = this.airports.get(ident);
-    if (!a?.runwayHeadingsDeg?.length) return null;
     const w = this.assess(ident, at)?.prevailing;
     if (!w || w.windDirDeg == null || w.windDirDeg === 'VRB') return null;
     const dir = w.windDirDeg;
-    let best = a.runwayHeadingsDeg[0]!;
-    let bestDiff = Math.abs(angleDiffDeg(dir, best));
+
+    // Prefer the real designators (keeps L/R/C); fall back to headings-only.
+    if (a?.runways?.length) {
+      let best = a.runways[0]!;
+      let bestDiff = Math.abs(angleDiffDeg(dir, best[1]));
+      for (const r of a.runways) {
+        const d = Math.abs(angleDiffDeg(dir, r[1]));
+        if (d < bestDiff) {
+          bestDiff = d;
+          best = r;
+        }
+      }
+      // Parallels share the into-wind heading; wind can't pick between them, so
+      // report the group (e.g. "08L/R") — the actual side comes from ATIS.
+      const group = a.runways.filter((r) => Math.abs(angleDiffDeg(r[1], best[1])) < 5).map((r) => r[0]);
+      return combineDesignators(group);
+    }
+
+    if (!a?.runwayHeadingsDeg?.length) return null;
+    let bestH = a.runwayHeadingsDeg[0]!;
+    let bestDiff = Math.abs(angleDiffDeg(dir, bestH));
     for (const h of a.runwayHeadingsDeg) {
-      const d = Math.abs(angleDiffDeg(dir, h)); // smallest angle to wind = into wind
+      const d = Math.abs(angleDiffDeg(dir, h));
       if (d < bestDiff) {
         bestDiff = d;
-        best = h;
+        bestH = h;
       }
     }
-    const n = Math.round(best / 10) % 36;
+    const n = Math.round(bestH / 10) % 36;
     return String(n === 0 ? 36 : n).padStart(2, '0');
   }
 
@@ -191,4 +215,17 @@ export class BriefingStore {
     }
     return out;
   }
+}
+
+/** Merge parallel-runway designators into one label: ["08L","08R"] -> "08L/R". */
+function combineDesignators(ids: string[]): string {
+  const parsed = ids
+    .map((s) => /^(\d{1,2})([LRC]?)$/.exec(s))
+    .filter((m): m is RegExpExecArray => m != null);
+  if (!parsed.length) return ids[0] ?? '';
+  const num = parsed[0]![1]!.padStart(2, '0');
+  const suffixes = [...new Set(parsed.map((m) => m[2]).filter(Boolean))].sort(
+    (a, b) => 'LCR'.indexOf(a!) - 'LCR'.indexOf(b!),
+  );
+  return suffixes.length ? num + suffixes.join('/') : num;
 }

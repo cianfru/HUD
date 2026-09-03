@@ -5,6 +5,30 @@ All notable changes to the Even G2 Aviation HUD.
 This is a **personal, supplemental, experimental** tool — not a certified
 instrument, not part of the aircraft, and never a primary reference.
 
+## v0.5.0 — 2026-09-03
+
+### Added
+- **ATIS frequencies** on the airport pages. Each alternate's weather browser
+  and the DEST page now show the field's ATIS frequency (e.g. `ATIS 128.85`)
+  alongside the METAR/TAF, verdict, runway and V/I — bundled offline from
+  OurAirports (1,409 fields carry one).
+- **Exact arrival local time** via per-airport IANA time zones (bundled for all
+  4,981 fields) computed DST-correct with `Intl`. Replaces the longitude
+  estimate, so the destination arrival LT is right year-round (Tashkent +5,
+  etc.). Longitude remains a last-resort fallback.
+- **Text brightness setting** (SETTINGS → `Bright`, levels 1–4, SDK `textColor`).
+  Dim the HUD to cut distraction and save a little power; changing it rebuilds
+  the page so the new brightness applies immediately.
+- **Runway-in-use now carries L/R/C.** Instead of just a runway number, the
+  wind-derived runway shows its real designator; for a parallel pair the wind
+  can't distinguish, it shows the group (e.g. `26L/R`) — the actual side is an
+  ATIS call, whose frequency is now on the page.
+
+### Changed
+- Airport database rebuilt with runway designators, time zones and ATIS
+  frequencies (schema updated; legacy-code aliases retained). SDK bumped to
+  0.0.14 for `textColor`.
+
 ## v0.4.1 — 2026-09-03
 
 ### Fixed — arrival time now uses the OFP's routed distance

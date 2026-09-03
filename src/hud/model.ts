@@ -24,6 +24,8 @@ export type HudFocus = 'page' | 'list' | 'detail';
 export interface HudConfig {
   clock: 'utc' | 'local';
   autoSequence: boolean;
+  /** Text brightness level 0..4 (SDK textColor) — dim the HUD to taste. */
+  brightness: number;
 }
 
 export interface HudState {
@@ -70,6 +72,7 @@ export interface HudState {
     report: SuitabilityReport;
     metarRaw?: string;
     tafRaw?: string;
+    atisMhz?: number;
   } | null;
   /**
    * Destination weather for the DEST page: arrival local time, likely runway,
@@ -84,5 +87,6 @@ export interface HudState {
     report: SuitabilityReport | null;
     metarRaw?: string;
     tafRaw?: string;
+    atisMhz?: number;
   } | null;
 }

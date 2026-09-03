@@ -21,6 +21,8 @@ export interface HudContainer {
   w: number;
   h: number;
   text: string;
+  /** Text brightness level 0..4 (SDK textColor); applied on (re)build. */
+  brightness?: number;
 }
 
 // The gestures the firmware relays. `press`/`doublePress` are treated as one

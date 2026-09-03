@@ -67,7 +67,7 @@ export class HudController {
     opts: ControllerOptions = {},
   ) {
     this.renderer = new HudRenderer(bridge);
-    this.config = { clock: 'utc', autoSequence: true, ...opts.config };
+    this.config = { clock: 'utc', autoSequence: true, brightness: 3, ...opts.config };
     this.tickMs = opts.tickMs ?? 1000;
     this.now = opts.now ?? (() => Date.now());
     this.flightStartMs = this.now();
@@ -163,11 +163,14 @@ export class HudController {
   /** No fix for this long -> mark GPS stale so old GS/track aren't trusted. */
   private static readonly GPS_STALE_MS = 5000;
 
-  // SETTINGS rows, in order: two toggles then a Back row (activating Back exits).
+  // SETTINGS rows, in order: three toggles then a Back row (Back exits).
   private static readonly SETTINGS_CLOCK = 0;
   private static readonly SETTINGS_AUTOSEQ = 1;
-  private static readonly SETTINGS_BACK = 2;
-  private static readonly SETTINGS_ROWS = 3;
+  private static readonly SETTINGS_BRIGHT = 2;
+  private static readonly SETTINGS_BACK = 3;
+  private static readonly SETTINGS_ROWS = 4;
+  private static readonly BRIGHTNESS_MIN = 1;
+  private static readonly BRIGHTNESS_MAX = 4;
   /** Collapse a click+double-click pair from one physical tap into one action. */
   private static readonly ACTIVATE_DEBOUNCE_MS = 350;
 
@@ -240,6 +243,15 @@ export class HudController {
       case HudController.SETTINGS_AUTOSEQ:
         this.config.autoSequence = !this.config.autoSequence;
         break;
+      case HudController.SETTINGS_BRIGHT:
+        // Cycle brightness 1..4; force a rebuild so the new textColor is applied
+        // (partial text updates don't carry colour).
+        this.config.brightness =
+          this.config.brightness >= HudController.BRIGHTNESS_MAX
+            ? HudController.BRIGHTNESS_MIN
+            : this.config.brightness + 1;
+        this.renderer.invalidate();
+        break;
       case HudController.SETTINGS_BACK:
         this.focus = 'page';
         break;
@@ -300,6 +312,7 @@ export class HudController {
             report: this.briefing.report(selAlt.waypoint.ident, now, this.diversion.reasons)!,
             metarRaw: this.briefing.metarRaw(selAlt.waypoint.ident),
             tafRaw: this.briefing.tafRaw(selAlt.waypoint.ident),
+            atisMhz: this.briefing.airport(selAlt.waypoint.ident)?.atisMhz,
           }
         : null;
 
@@ -318,6 +331,7 @@ export class HudController {
             report: this.briefing.report(dest.ident, now, this.diversion.reasons),
             metarRaw: this.briefing.metarRaw(dest.ident),
             tafRaw: this.briefing.tafRaw(dest.ident),
+            atisMhz: this.briefing.airport(dest.ident)?.atisMhz,
           }
         : null;
 

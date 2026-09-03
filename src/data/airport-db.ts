@@ -11,7 +11,8 @@ import { distanceNm, crossTrackNm, alongTrackNm } from '../core/geo.js';
 import type { BriefingAirport } from './briefing.js';
 import type { LatLon } from '../core/types.js';
 
-type Row = [string, number, number, string, number, number, number, number[]];
+type Runway = [string, number]; // [designator e.g. "16L", true heading deg]
+type Row = [string, number, number, string, number, number, number, Runway[], string, number];
 interface DbFile {
   fmt: string[];
   airports: Row[];
@@ -20,7 +21,10 @@ interface DbFile {
 }
 
 const byId = new Map<string, BriefingAirport>();
-for (const [ident, lat, lon, name, elevFt, rwyFt, hard, hdgs] of (raw as unknown as DbFile).airports) {
+for (const [ident, lat, lon, name, elevFt, rwyFt, hard, runways, tz, atis] of (
+  raw as unknown as DbFile
+).airports) {
+  const hasRwy = runways && runways.length > 0;
   byId.set(ident, {
     ident,
     name,
@@ -29,7 +33,10 @@ for (const [ident, lat, lon, name, elevFt, rwyFt, hard, hdgs] of (raw as unknown
     elevFt: elevFt || undefined,
     longestRwyFt: rwyFt || undefined,
     hardSurface: hard === 1,
-    runwayHeadingsDeg: hdgs && hdgs.length ? hdgs : undefined,
+    runways: hasRwy ? runways : undefined,
+    runwayHeadingsDeg: hasRwy ? [...new Set(runways.map((r) => r[1]))] : undefined,
+    tz: tz || undefined,
+    atisMhz: atis || undefined,
   });
 }
 

@@ -94,7 +94,7 @@ export class EvenSdkBridge implements GlassesBridge {
 }
 
 function toTextContainer(c: HudContainer): TextContainerProperty {
-  return new TextContainerProperty({
+  const t = new TextContainerProperty({
     containerID: c.id,
     xPosition: c.x,
     yPosition: c.y,
@@ -103,6 +103,9 @@ function toTextContainer(c: HudContainer): TextContainerProperty {
     borderWidth: 0,
     content: c.text,
   });
+  // Per-container text brightness (SDK 0.0.14+); applied on (re)build.
+  if (c.brightness != null) t.textColor = c.brightness;
+  return t;
 }
 
 /** Normalise a raw EvenHub event into a Gesture, or null if it isn't one. */

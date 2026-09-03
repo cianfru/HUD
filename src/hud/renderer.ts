@@ -21,6 +21,10 @@ export class HudRenderer {
   /** Build the given view from state and reconcile it onto the display. */
   render(view: HudView, state: HudState): void {
     const containers = buildView(view, state);
+    // Uniform text brightness from settings — stamped on every container so a
+    // (re)build carries the current textColor. A brightness change invalidates
+    // the cache (see controller), forcing the rebuild that applies it.
+    for (const c of containers) c.brightness = state.config.brightness;
     const idsChanged = !sameIds(containers, this.lastText);
 
     if (view !== this.currentView || this.currentView === null || idsChanged) {

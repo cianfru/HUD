@@ -148,10 +148,12 @@ function buildDivert(s: HudState): HudContainer[] {
 // two taps step back out to the pages.
 function buildDivertWx(s: HudState): HudContainer[] {
   const W = SCREEN_W - 2 * MARGIN;
-  const { ident, report, metarRaw, tafRaw } = s.selectedWx!;
+  const { ident, report, metarRaw, tafRaw, atisMhz } = s.selectedWx!;
   const total = Math.min(4, s.alternates?.length ?? 0);
   const pos = total ? `${s.divertSelection + 1}/${total}` : '';
-  const lines: string[] = [`${ident} ${pos}  ${report.verdict}  2TAP=BACK`.replace(/\s+/g, ' ')];
+  const lines: string[] = [`${ident} ${pos}  ${report.verdict}`.replace(/\s+/g, ' ').trim()];
+  // ATIS frequency (advisory) shares the second line with the back hint.
+  lines.push(atisMhz ? `ATIS ${fmtFreq(atisMhz)}   2TAP=BACK` : '2TAP=BACK');
   lines.push(...(metarRaw ? wrap('M ' + metarRaw, 2) : ['M  no METAR']));
   lines.push(...(tafRaw ? wrap('T ' + tafRaw, 4) : ['T  no TAF']));
   return lines.slice(0, 8).map((text, i) => ({
@@ -190,6 +192,12 @@ function wrap(text: string, maxLines: number, width = 46): string[] {
   return lines;
 }
 
+/** ATIS/COM frequency in MHz, trimmed: 128.85, 126.8, 118 -> "118.0". */
+function fmtFreq(mhz: number): string {
+  const s = mhz.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+  return /\./.test(s) ? s : s + '.0';
+}
+
 /** Pack age: "12m" under an hour, else "2h05". */
 function formatAge(sec: number | null): string {
   if (sec == null) return '--';
@@ -218,6 +226,7 @@ function buildDest(s: HudState): HudContainer[] {
   const verdict = d.report ? `  ${d.report.verdict}` : '';
   const header = `DEST ${d.ident}  ${arr}  ${rwy} ${wx}${verdict}`;
   const lines: string[] = [header];
+  if (d.atisMhz) lines.push(`ATIS ${fmtFreq(d.atisMhz)}`);
   lines.push(...(d.metarRaw ? wrap('M ' + d.metarRaw, 2) : ['M  no METAR — fetch before departure']));
   lines.push(...(d.tafRaw ? wrap('T ' + d.tafRaw, 4) : ['T  no TAF']));
   return lines.slice(0, 8).map((text, i) => ({
@@ -241,6 +250,7 @@ function buildSettings(s: HudState): HudContainer[] {
   const rows = [
     `Clock     ${s.config.clock.toUpperCase()}`,
     `Auto-seq  ${s.config.autoSequence ? 'ON' : 'OFF'}`,
+    `Bright    ${s.config.brightness}`,
     '< Back',
   ];
   const lines: string[] = [`SETTINGS   ${hint}`];

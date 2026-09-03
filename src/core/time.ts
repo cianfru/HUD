@@ -65,3 +65,37 @@ export function etaLocal(
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
+
+/**
+ * UTC offset (minutes) for an IANA time zone at instant `at`, DST-correct — via
+ * the platform's Intl/ICU data (available in the WebView). Returns null for an
+ * unknown zone. Used to turn destination arrival into exact local time.
+ */
+export function tzOffsetMin(tz: string, at: Date): number | null {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    const parts = dtf.formatToParts(at);
+    const get = (t: string): number => Number(parts.find((p) => p.type === t)?.value);
+    const asUtc = Date.UTC(
+      get('year'),
+      get('month') - 1,
+      get('day'),
+      get('hour'),
+      get('minute'),
+      get('second'),
+    );
+    if (Number.isNaN(asUtc)) return null;
+    return Math.round((asUtc - at.getTime()) / 60_000);
+  } catch {
+    return null;
+  }
+}

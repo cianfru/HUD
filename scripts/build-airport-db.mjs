@@ -12,10 +12,12 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import tzlookup from 'tz-lookup';
 
 const OUT = resolve(dirname(fileURLToPath(import.meta.url)), '../src/data/airport-db.json');
 const AP = 'https://davidmegginson.github.io/ourairports-data/airports.csv';
 const RWY = 'https://davidmegginson.github.io/ourairports-data/runways.csv';
+const FREQ = 'https://davidmegginson.github.io/ourairports-data/airport-frequencies.csv';
 const HARD = /asph|concrete|paved|asphalt|\bpem\b|\bbit\b|\bcon\b|\basp\b|tarmac/i;
 
 function parseCsvLine(line) {
@@ -60,16 +62,26 @@ async function main() {
     const icao = (r[ap.i('icao_code')] || '').toUpperCase();
     const id = /^[A-Z]{4}$/.test(icao) ? icao : ident;
     if (!/^[A-Z]{4}$/.test(id)) continue;
+    const lat = Math.round(+r[ap.i('latitude_deg')] * 1e4) / 1e4;
+    const lon = Math.round(+r[ap.i('longitude_deg')] * 1e4) / 1e4;
+    let tz = '';
+    try {
+      tz = tzlookup(lat, lon) || '';
+    } catch {
+      tz = ''; // off the tz polygons (mid-ocean); fall back to longitude at runtime
+    }
     byIdent.set(ident, {
       id,
       ident,
-      lat: Math.round(+r[ap.i('latitude_deg')] * 1e4) / 1e4,
-      lon: Math.round(+r[ap.i('longitude_deg')] * 1e4) / 1e4,
+      lat,
+      lon,
       name: (r[ap.i('name')] || '').slice(0, 40),
       elev: r[ap.i('elevation_ft')] ? Math.round(+r[ap.i('elevation_ft')]) : 0,
+      tz,
+      atis: 0,
       rwyFt: 0,
       hard: 0,
-      hdgs: new Set(),
+      runways: [], // [designator, trueHeadingDeg] per runway end
     });
   }
 
@@ -82,17 +94,31 @@ async function main() {
     const len = +r[rwy.i('length_ft')];
     if (Number.isFinite(len) && len > a.rwyFt) a.rwyFt = Math.round(len);
     if (HARD.test(r[rwy.i('surface')] || '')) a.hard = 1;
-    for (const col of ['le_heading_degT', 'he_heading_degT']) {
-      const h = +r[rwy.i(col)];
-      if (Number.isFinite(h)) a.hdgs.add(Math.round(h) % 360);
+    // Keep each end's designator (e.g. "16L") alongside its true heading, so the
+    // runway-in-use can be reported with its L/R/C, not just the number.
+    for (const [idCol, hdgCol] of [['le_ident', 'le_heading_degT'], ['he_ident', 'he_heading_degT']]) {
+      const des = (r[rwy.i(idCol)] || '').toUpperCase().trim();
+      const h = +r[rwy.i(hdgCol)];
+      if (/^\d{1,2}[LRC]?$/.test(des) && Number.isFinite(h)) a.runways.push([des, Math.round(h) % 360]);
     }
+  }
+
+  console.log('[airport-db] fetching frequencies…');
+  const freq = await csv(FREQ);
+  for (const r of freq.rows) {
+    const a = byIdent.get((r[freq.i('airport_ident')] || '').toUpperCase());
+    if (!a || a.atis) continue; // first ATIS/D-ATIS wins
+    const type = (r[freq.i('type')] || '').toUpperCase();
+    if (type !== 'ATIS' && type !== 'D-ATIS') continue;
+    const mhz = +r[freq.i('frequency_mhz')];
+    if (Number.isFinite(mhz) && mhz > 0) a.atis = Math.round(mhz * 1000) / 1000;
   }
 
   // Keep every large/medium field. A field with no runway data (rwyFt 0) still
   // resolves as a destination (position/name); it just won't be offered as an
   // A320 alternate, which needs a known runway length + hard surface.
   const airports = [...byIdent.values()].map((a) => [
-    a.id, a.lat, a.lon, a.name, a.elev, a.rwyFt, a.hard, [...a.hdgs].sort((x, y) => x - y),
+    a.id, a.lat, a.lon, a.name, a.elev, a.rwyFt, a.hard, a.runways, a.tz, a.atis,
   ]);
 
   // Legacy-code aliases: where the current ICAO differs from the OurAirports
@@ -105,13 +131,16 @@ async function main() {
   }
 
   const out = {
-    fmt: ['ident', 'lat', 'lon', 'name', 'elevFt', 'longestRwyFt', 'hard', 'headings'],
+    fmt: ['ident', 'lat', 'lon', 'name', 'elevFt', 'longestRwyFt', 'hard', 'runways', 'tz', 'atis'],
     airports,
     aliases,
   };
   writeFileSync(OUT, JSON.stringify(out));
+  const withTz = airports.filter((a) => a[8]).length;
+  const withAtis = airports.filter((a) => a[9]).length;
   console.log(
-    `[airport-db] wrote ${OUT}: ${airports.length} airports, ${Object.keys(aliases).length} aliases`,
+    `[airport-db] wrote ${OUT}: ${airports.length} airports, ${Object.keys(aliases).length} aliases, ` +
+      `${withTz} with tz, ${withAtis} with ATIS`,
   );
 }
 

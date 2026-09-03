@@ -17,6 +17,7 @@ import { SimulatedPositionSource } from '../data/position/sim-source.js';
 import type { PositionSource } from '../data/position/source.js';
 import { HudController } from '../app/controller.js';
 import { FlightPlan } from '../core/flightplan.js';
+import { tzOffsetMin } from '../core/time.js';
 import { parseRoute } from '../data/route-parser.js';
 import { DEMO_ROUTE_STRING, AIRPORTS } from '../data/navdata.js';
 import { BriefingStore } from '../data/briefing.js';
@@ -62,11 +63,15 @@ function saveAndReload(flight: StoredFlight): void {
   location.reload();
 }
 
-/** Destination UTC offset (minutes) for arrival local time: the curated navdata
- *  table when known, else a whole-hour estimate from longitude so every field
- *  gets a local time. The longitude estimate ignores DST and political time-zone
- *  boundaries, so it can be an hour off in DST-observing regions. */
-function destOffsetMin(dest: Waypoint, ades?: string): number | undefined {
+/** Destination UTC offset (minutes) for arrival local time. Prefers the field's
+ *  IANA time zone (DST-correct via Intl), then the curated navdata table, then a
+ *  whole-hour estimate from longitude so every field still gets a local time. */
+function destOffsetMin(store: BriefingStore, dest: Waypoint, ades?: string): number | undefined {
+  const tz = ades ? store.airport(ades)?.tz : undefined;
+  if (tz) {
+    const off = tzOffsetMin(tz, new Date());
+    if (off != null) return off;
+  }
   const tabled = ades ? AIRPORTS[ades]?.utcOffsetMin : undefined;
   if (tabled != null) return tabled;
   if (Number.isFinite(dest.lon)) return Math.round(dest.lon / 15) * 60;
@@ -81,7 +86,7 @@ function routeWaypoints(store: BriefingStore, adep?: string, ades?: string): Way
   const dest = ades ? store.asWaypoint(ades) : undefined;
   if (dep) wps.push(dep);
   if (dest) {
-    const off = destOffsetMin(dest, ades);
+    const off = destOffsetMin(store, dest, ades);
     wps.push(off != null ? { ...dest, utcOffsetMin: off } : dest);
   }
   return wps;
