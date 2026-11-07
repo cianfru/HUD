@@ -2,9 +2,9 @@
   "package_id": "com.cianfru.avhud",
   "edition": "202601",
   "name": "Aviation HUD",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "min_app_version": "2.2.9",
-  "min_sdk_version": "0.0.13",
+  "min_sdk_version": "0.0.14",
   "entrypoint": "index.html",
   "permissions": [
     {
@@ -13,7 +13,7 @@
     },
     {
       "name": "network",
-      "desc": "Fetches live METAR/TAF when you build a flight by typing dep/dest (the OFP paste path needs no network).",
+      "desc": "Fetches METAR/TAF for your flight's airports when you type dep/dest or press 'Fetch latest weather' on the ground. Reading an OFP needs no network.",
       "whitelist": ["https://g2-hud-wx-cianfrus-projects.vercel.app"]
     }
   ],

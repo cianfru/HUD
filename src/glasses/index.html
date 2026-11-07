@@ -64,15 +64,17 @@
 
       <div class="card">
         <h2>Loaded</h2>
-        <p id="loaded" class="status">no flight set — flying the demo</p>
+        <p id="loaded" class="status">no flight set</p>
         <p id="wxage" class="muted"></p>
         <button id="fetch-wx" style="margin-top:8px">Fetch latest weather (before departure)</button>
         <p class="msg" id="msg"></p>
-        <button id="clear" class="ghost" style="margin-top:8px">Clear &amp; use demo</button>
+        <button id="demo" class="ghost" style="margin-top:8px">Try the demo (simulated flight)</button>
+        <button id="clear" class="ghost" style="margin-top:8px">Clear flight / stop demo</button>
       </div>
 
-      <p class="muted">The HUD renders on the glasses. Swipe = page; on the alternates page
-        swipe = next field, double-tap = its weather.</p>
+      <p class="muted">The HUD renders on the glasses. Swipe = page. On CRUISE: hold = peek the
+        full strip, tap = keep it on, double-tap = exit. On ALTERNATES: double-tap opens the
+        weather, swipe steps through fields, double-tap again goes back.</p>
     </div>
     <script type="module" src="./main.ts"></script>
   </body>

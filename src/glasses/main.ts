@@ -4,11 +4,11 @@
  * The pilot sets the flight in the phone panel — paste the OFP (offline) or type
  * dep/dest/altn — which builds a briefing pack, stored on the device. The HUD
  * then flies the REAL GPS fix (Garmin GLO via the SDK) against that pack. With
- * no flight set it falls back to the bundled demo (simulated route) so there is
- * always something to see.
+ * no flight set the glasses show setup instructions; the simulated demo runs
+ * only when asked for (phone button or ?demo=1) and is tagged DEMO on CRUISE.
  *
- * Touchpad / R1 ring: swipe = page; on the alternates page swipe steps between
- * fields and double-press opens the selected field's METAR/TAF.
+ * Touchpad / R1 ring: swipe = page; double-tap on CRUISE exits (system
+ * confirmation); on the alternates page double-tap opens the METAR/TAF browser.
  */
 import { waitForEvenAppBridge } from '@evenrealities/even_hub_sdk';
 import { EvenSdkBridge } from '../bridge/even-sdk.js';
@@ -23,10 +23,13 @@ import { DEMO_ROUTE_STRING, AIRPORTS } from '../data/navdata.js';
 import { BriefingStore } from '../data/briefing.js';
 import type { BriefingPack } from '../data/briefing.js';
 import { DEMO_BRIEFING } from '../data/briefing-demo.js';
+import { rebaseBriefing } from '../data/rebase.js';
 import { packFromOfp, packFromRoute, refreshWeather } from '../data/build-pack.js';
 import type { Waypoint } from '../core/types.js';
+import { buildSetup } from '../hud/views.js';
 
 const FLIGHT_KEY = 'glasses.flight';
+const DEMO_KEY = 'glasses.demo';
 // Weather proxy for the typed-route path (CORS-enabled so the WebView can read it).
 const WX_BASE = 'https://g2-hud-wx-cianfrus-projects.vercel.app';
 
@@ -60,6 +63,7 @@ function loadFlight(): StoredFlight | null {
 
 function saveAndReload(flight: StoredFlight): void {
   localStorage.setItem(FLIGHT_KEY, JSON.stringify(flight));
+  localStorage.removeItem(DEMO_KEY); // a real flight ends any demo
   location.reload();
 }
 
@@ -115,6 +119,16 @@ async function keepAwake(): Promise<void> {
   });
 }
 
+/** The simulated demo runs only when asked for: the phone button, or ?demo=1. */
+function demoRequested(): boolean {
+  if (new URLSearchParams(location.search).has('demo')) return true;
+  try {
+    return localStorage.getItem(DEMO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 function updateLoaded(): void {
   const el = document.getElementById('loaded');
   const age = document.getElementById('wxage');
@@ -123,7 +137,9 @@ function updateLoaded(): void {
     el.textContent = f
       ? `Flying ${f.adep ?? '?'} → ${f.ades ?? '?'}  (${f.pack.airports.length} fields, ` +
         `${f.pack.weather.filter((w) => w.tafRaw).length} TAFs)`
-      : 'no flight set — flying the demo';
+      : demoRequested()
+        ? 'demo running — simulated flight, NOT live GPS'
+        : 'no flight set — upload an OFP or type the route above';
   if (age) {
     if (!f) age.textContent = '';
     else {
@@ -143,7 +159,8 @@ function buildFromOfpText(text: string): void {
 }
 
 function wireForm(): void {
-  // Drop-the-PDF path: read the OFP PDF in the WebView (pdf.js), then parse it.
+  // Drop-the-PDF path: read the OFP PDF on the phone (dependency-free reader,
+  // no network), then parse it.
   const fileInput = document.getElementById('ofp-file') as HTMLInputElement | null;
   document.getElementById('pick-pdf')?.addEventListener('click', () => fileInput?.click());
   fileInput?.addEventListener('change', async () => {
@@ -151,11 +168,11 @@ function wireForm(): void {
     if (!file) return;
     msg(`reading ${file.name}…`);
     try {
-      const { pdfToText } = await import('./pdf-text.js');
+      const { pdfToText } = await import('../data/pdf-text.js');
       const text = await pdfToText(await file.arrayBuffer());
       buildFromOfpText(text);
     } catch (e) {
-      msg('could not read that PDF: ' + String(e));
+      msg('could not read that PDF: ' + (e instanceof Error ? e.message : String(e)));
     }
   });
 
@@ -204,9 +221,28 @@ function wireForm(): void {
     }
   });
 
+  document.getElementById('demo')?.addEventListener('click', () => {
+    localStorage.removeItem(FLIGHT_KEY);
+    localStorage.setItem(DEMO_KEY, '1');
+    location.reload();
+  });
+
   document.getElementById('clear')?.addEventListener('click', () => {
     localStorage.removeItem(FLIGHT_KEY);
+    localStorage.removeItem(DEMO_KEY);
     location.reload();
+  });
+}
+
+/**
+ * First run, no flight and no demo: put setup instructions on the glasses (never
+ * a blank display). This is the root page, so double-tap exits via the system
+ * confirmation dialog.
+ */
+async function showSetup(bridge: EvenSdkBridge): Promise<void> {
+  await bridge.createPage(buildSetup());
+  bridge.onGesture((g) => {
+    if (g.type === 'doublePress') void bridge.shutdown(true);
   });
 }
 
@@ -228,10 +264,15 @@ async function boot(): Promise<void> {
     plan.plannedDistanceNm = flight.pack.routeDistanceNm;
     source = new SdkPositionSource(sdk);
     status(`flying ${flight.adep ?? '?'} → ${flight.ades ?? '?'} — live GPS`);
+  } else if (!demoRequested()) {
+    status('no flight set — load one below');
+    await showSetup(bridge);
+    return;
   } else {
-    // Demo: simulated route + bundled pack.
+    // Demo (opt-in): simulated route + bundled pack, tagged DEMO on the glasses.
     const { waypoints } = parseRoute(DEMO_ROUTE_STRING);
-    briefing = new BriefingStore(DEMO_BRIEFING);
+    // Re-based to now, so the frozen snapshot reads as a fresh briefing.
+    briefing = new BriefingStore(rebaseBriefing(DEMO_BRIEFING));
     plan = new FlightPlan(waypoints);
     source = new SimulatedPositionSource(waypoints, {
       cruiseKt: 458,
@@ -240,13 +281,14 @@ async function boot(): Promise<void> {
       timeScale: 20,
       wanderNm: 0.6,
     });
-    status('demo — no flight set (simulated route)');
+    status('demo — simulated flight, NOT live GPS');
   }
 
   const controller = new HudController(bridge, source, plan, {
     tickMs: 1000,
     briefing,
     diversion: { maxRangeNm: 1000, limit: 6 },
+    demo: !flight,
   });
   controller.start();
 }

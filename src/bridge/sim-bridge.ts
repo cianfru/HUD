@@ -57,7 +57,7 @@ export class SimBridge implements GlassesBridge {
     }
   }
 
-  async shutdown(): Promise<void> {
+  async shutdown(_confirm?: boolean): Promise<void> {
     this.containers.clear();
     this.render();
   }

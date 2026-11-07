@@ -60,6 +60,8 @@ export interface HudState {
   cruiseFull: boolean;
   /** True when there is a last fix but none recently — GS/track are not current. */
   gpsStale: boolean;
+  /** Simulated demo flight (not live GPS) — CRUISE shows a DEMO tag. */
+  demo: boolean;
   /** Navigation depth within the current page (page carousel / list / detail). */
   focus: HudFocus;
   /** DIVERT list: index of the highlighted alternate (swipe moves it in 'list'). */

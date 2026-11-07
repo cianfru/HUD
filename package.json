@@ -25,14 +25,13 @@
     "test:watch": "vitest",
     "briefing": "node scripts/build-briefing.mjs",
     "ofp": "tsx scripts/parse-ofp.mjs",
-    "pack:glasses": "npm run build:glasses && evenhub pack app.json dist-glasses -o g2-aviation-hud.ehpk"
+    "pack:glasses": "npm run build:glasses && evenhub pack app.json dist-glasses -o g2-aviation-hud.ehpk --sdk-ver 0.0.14"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.14"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "pdfjs-dist": "^4.10.38",
     "tsx": "^4.23.8",
     "typescript": "^5.7.3",
     "tz-lookup": "^6.1.25",

@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { extractOfp } from '../src/data/ofp.ts';
+import { pdfToText as pdfBytesToText } from '../src/data/pdf-text.ts';
 
 const AP_CSV = 'https://davidmegginson.github.io/ourairports-data/airports.csv';
 
@@ -35,25 +36,9 @@ if (!file) {
   process.exit(1);
 }
 
+// Same dependency-free reader the app uses on the phone.
 async function pdfToText(path) {
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const data = new Uint8Array(readFileSync(path));
-  const doc = await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
-  let text = '';
-  for (let p = 1; p <= doc.numPages; p++) {
-    const page = await doc.getPage(p);
-    const content = await page.getTextContent();
-    // Reassemble lines from item positions: a large Y jump starts a new line.
-    let lastY = null;
-    for (const it of content.items) {
-      const y = it.transform?.[5];
-      if (lastY != null && Math.abs(y - lastY) > 2) text += '\n';
-      text += it.str + (it.hasEOL ? '\n' : ' ');
-      lastY = y;
-    }
-    text += '\n';
-  }
-  return text;
+  return pdfBytesToText(new Uint8Array(readFileSync(path)));
 }
 
 function parseCsvLine(line) {

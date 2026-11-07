@@ -58,8 +58,12 @@ export interface GlassesBridge {
   rebuildPage(containers: HudContainer[]): Promise<void>;
   /** Partial text update of one container. No flicker on hardware. */
   updateText(id: number, text: string): Promise<void>;
-  /** Tear down the page and exit. */
-  shutdown(): Promise<void>;
+  /**
+   * Tear down the page and exit. With `confirm` the system shows its exit
+   * confirmation first (SDK exit mode 1) — required when exiting from the
+   * root page; without it the app exits immediately (mode 0).
+   */
+  shutdown(confirm?: boolean): Promise<void>;
 
   /** Subscribe to touchpad/ring gestures. Returns an unsubscribe function. */
   onGesture(cb: (g: Gesture) => void): () => void;

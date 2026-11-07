@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildView } from '../src/hud/views.js';
+import { buildView, buildSetup } from '../src/hud/views.js';
 import type { HudState } from '../src/hud/model.js';
 import type { Alternate } from '../src/core/diversion.js';
 import { FlightPlan } from '../src/core/flightplan.js';
@@ -18,6 +18,7 @@ function baseState(over: Partial<HudState>): HudState {
     closestAlternate: null,
     cruiseFull: true,
     gpsStale: false,
+    demo: false,
     focus: 'page',
     divertSelection: 0,
     settingsSelection: 0,
@@ -52,6 +53,27 @@ describe('CRUISE view — hold-to-reveal declutter', () => {
   it('shows the full strip when revealed', () => {
     const c = buildView('CRUISE', baseState({ position: pos, cruiseFull: true }));
     expect(c.length).toBeGreaterThan(1);
+  });
+
+  it('tags a simulated demo flight in both minimal and full strips', () => {
+    for (const cruiseFull of [false, true]) {
+      const c = buildView('CRUISE', baseState({ position: pos, cruiseFull, demo: true }));
+      expect(c.some((x) => x.text.startsWith('DEMO'))).toBe(true);
+    }
+    const live = buildView('CRUISE', baseState({ position: pos, cruiseFull: true }));
+    expect(live.some((x) => x.text.includes('DEMO'))).toBe(false);
+  });
+});
+
+describe('first-run setup screen', () => {
+  it('tells the pilot how to load a flight and how to exit', () => {
+    const c = buildSetup();
+    const text = c.map((x) => x.text).join('\n');
+    expect(text).toMatch(/No flight loaded/);
+    expect(text).toMatch(/OFP PDF/);
+    expect(text).toMatch(/Double-tap to exit/);
+    expect(c.every((x) => x.text.length > 0)).toBe(true); // no empty containers
+    expect(c.length).toBeLessThanOrEqual(8);
   });
 });
 

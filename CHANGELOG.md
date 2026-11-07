@@ -5,6 +5,35 @@ All notable changes to the Even G2 Aviation HUD.
 This is a **personal, supplemental, experimental** tool — not a certified
 instrument, not part of the aircraft, and never a primary reference.
 
+## v0.6.0 — 2026-11-07
+
+Store-review resubmission. Addresses every item in the v0.5.0 rejection and
+the review rules it would have hit next.
+
+### Fixed (review findings)
+- **No unlisted URLs in the bundle.** pdf.js carried 19 XFA/XML namespace URLs;
+  it is replaced by a small built-in PDF reader. The bundle's only URL is the
+  whitelisted weather endpoint.
+- **No dynamic code.** pdf.js was the only source of `new Function()`; the
+  bundle now has no `new Function`, `eval` or string timers.
+- **Screenshots** are captured from the official simulator's framebuffer
+  (576×288 RGBA), so they match what the glasses actually render.
+
+### Changed
+- **Exit:** double-tap on the root page (CRUISE) now opens the system exit
+  confirmation (`shutDownPageContainer(1)`). The CRUISE latch moved to a single
+  tap; hold-to-peek is unchanged.
+- **First run:** with no flight loaded, the glasses show how to set one up on
+  the phone — instead of silently flying a simulated route.
+- **Demo is opt-in** ("Try the demo" on the phone, or `?demo=1`), always tagged
+  `DEMO - simulated flight` on CRUISE so it can never pass for live data, and
+  re-based to the current time so its weather reads fresh.
+- OFP PDF reading is now ~14 KB instead of ~1.7 MB, and fully offline. Encrypted
+  or scanned (image-only) PDFs give a clear message pointing to paste-the-text.
+- METAR/TAF lines no longer repeat the report type (`M OMDB…`, not `M METAR OMDB…`).
+- Manifest: `min_sdk_version` 0.0.14 (text brightness and long-press need it);
+  network permission description matches what the app actually fetches.
+
 ## v0.5.0 — 2026-09-03
 
 ### Added

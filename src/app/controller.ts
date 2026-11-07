@@ -43,6 +43,8 @@ export interface ControllerOptions {
    */
   briefing?: BriefingStore;
   diversion?: DiversionOptions;
+  /** Simulated demo flight: CRUISE is tagged DEMO so it can't pass for live data. */
+  demo?: boolean;
 }
 
 export class HudController {
@@ -56,6 +58,7 @@ export class HudController {
   private readonly flightStartMs: number;
   private readonly briefing?: BriefingStore;
   private readonly diversion: DiversionOptions;
+  private readonly demo: boolean;
 
   private ticker: ReturnType<typeof setInterval> | null = null;
   private unsubscribers: Array<() => void> = [];
@@ -73,6 +76,7 @@ export class HudController {
     this.flightStartMs = this.now();
     this.briefing = opts.briefing;
     this.diversion = opts.diversion ?? {};
+    this.demo = opts.demo ?? false;
   }
 
   start(): void {
@@ -122,13 +126,15 @@ export class HudController {
         this.onSwipe(-1);
         break;
       case 'press':
-      case 'doublePress':
-        // The G2 does not reliably relay single taps to an app — only swipes
-        // and double-taps come through dependably. So BOTH map to the same
-        // "activate" action (debounced, in case a unit emits click+doubleclick
-        // for one physical double-tap), and no action depends on telling a
-        // single tap from a double tap.
         this.activate();
+        break;
+      case 'doublePress':
+        // On the root page (CRUISE, top level) double-tap is the platform's
+        // exit gesture: hand it to the system exit-confirmation dialog. Every
+        // other page keeps double-tap as "activate" — single taps were not
+        // delivered dependably on early units, so no drill-in relies on them.
+        if (this.view === 'CRUISE' && this.focus === 'page') this.requestExit();
+        else this.activate();
         break;
       case 'longPress':
         this.revealHold = true; // hold to reveal the full CRUISE strip
@@ -140,11 +146,13 @@ export class HudController {
     this.draw();
   }
 
-  // Navigation grammar, built only on gestures the G2 delivers reliably:
+  // Navigation grammar:
   //   swipe up/down  = move (between pages at the top level; browse/scroll once
   //                    drilled in)
-  //   tap (any)      = activate: enter a page's detail, or act on the highlighted
+  //   tap / 2-tap    = activate: enter a page's detail, or act on the highlighted
   //                    setting. Double-tap in DIVERT detail steps back out.
+  //   2-tap on root  = exit (CRUISE at top level -> system exit confirmation)
+  //   tap on root    = latch the full CRUISE strip on/off
   // `divertSelection` is which alternate the detail browser is showing;
   // `settingsSelection` is the highlighted SETTINGS row.
   private focus: HudFocus = 'page';
@@ -152,6 +160,7 @@ export class HudController {
   private settingsSelection = 0;
   private lastAltCount = 0;
   private lastActivateMs = 0;
+  private lastLatchToggleMs = -Infinity;
   private lastFixWallMs = 0;
   private criticalPhase = false;
   // CRUISE declutter: the strip is minimal (GS only) by default. A long-press
@@ -209,6 +218,19 @@ export class HudController {
    * detail; inside a page it acts on what's shown. Debounced so a click+
    * double-click pair from one physical tap counts once.
    */
+  /**
+   * Exit from the root page through the system's exit-confirmation dialog
+   * (mode 1) — the platform rule; cancelling it leaves the HUD running. If a
+   * unit reported this double-tap as a click first, undo the latch that click
+   * just toggled.
+   */
+  private requestExit(): void {
+    if (this.now() - this.lastLatchToggleMs < HudController.ACTIVATE_DEBOUNCE_MS) {
+      this.revealLatch = !this.revealLatch;
+    }
+    void this.bridge.shutdown(true).catch((e) => console.error('[HUD] exit failed:', e));
+  }
+
   private activate(): void {
     const t = this.now();
     if (t - this.lastActivateMs < HudController.ACTIVATE_DEBOUNCE_MS) return;
@@ -223,6 +245,7 @@ export class HudController {
         this.settingsSelection = 0;
       } else if (this.view === 'CRUISE') {
         this.revealLatch = !this.revealLatch; // latch the full strip on/off
+        this.lastLatchToggleMs = t;
       }
       // DEST has no detail — it shows everything already.
       return;
@@ -350,6 +373,7 @@ export class HudController {
       // critical phase — where it stays minimal so nothing competes with the
       // outside view. A momentary long-press hold still peeks past the latch.
       cruiseFull: this.revealHold || (this.revealLatch && !this.criticalPhase),
+      demo: this.demo,
       gpsStale:
         this.position != null &&
         this.lastFixWallMs > 0 &&

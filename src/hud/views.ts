@@ -44,8 +44,13 @@ function buildCruise(s: HudState): HudContainer[] {
   // Declutter: minimal by default (GS only) so nothing competes with the
   // outside view. A long-press reveals the full strip while held; a tap latches
   // it. Kept minimal automatically in a critical phase (low/slow).
+  // A simulated demo flight is always tagged, so it can never pass for live data.
+  const demoTag: HudContainer[] = s.demo
+    ? [{ id: 9, x: MARGIN, y: s.cruiseFull ? 86 : 46, w: 400, h: ROW_H, text: 'DEMO - simulated flight' }]
+    : [];
+
   if (!s.cruiseFull) {
-    return [{ id: 4, x: MARGIN, y: 6, w: 260, h: 34, text: gs }];
+    return [{ id: 4, x: MARGIN, y: 6, w: 260, h: 34, text: gs }, ...demoTag];
   }
 
   const trk = !pos || stale ? 'TRK ---' : `TRK ${formatDeg(pos.trackDeg)}`;
@@ -77,7 +82,24 @@ function buildCruise(s: HudState): HudContainer[] {
 
     { id: 7, x: MARGIN, y: 46, w: 400, h: ROW_H, text: altn },
     { id: 8, x: 416, y: 46, w: RIGHT - 416, h: ROW_H, text: destText },
+    ...demoTag,
   ];
+}
+
+/**
+ * First run (no flight loaded): tell the pilot, on the glasses, how to set one
+ * up — never a blank display, and never a simulated flight passed off as live.
+ */
+export function buildSetup(): HudContainer[] {
+  const W = SCREEN_W - 2 * MARGIN;
+  const rows: Array<[number, string]> = [
+    [0, 'AVIATION HUD'],
+    [1, 'No flight loaded.'],
+    [2, 'On your phone: upload the OFP PDF,'],
+    [3, 'or type DEP / DEST / ALTN.'],
+    [5, 'Double-tap to exit.'],
+  ];
+  return rows.map(([row, text], i) => ({ id: i + 1, x: MARGIN, y: 14 + row * 34, w: W, h: ROW_H, text }));
 }
 
 // --- DIVERT: offline diversion picture from the briefing pack -------------
@@ -154,8 +176,8 @@ function buildDivertWx(s: HudState): HudContainer[] {
   const lines: string[] = [`${ident} ${pos}  ${report.verdict}`.replace(/\s+/g, ' ').trim()];
   // ATIS frequency (advisory) shares the second line with the back hint.
   lines.push(atisMhz ? `ATIS ${fmtFreq(atisMhz)}   2TAP=BACK` : '2TAP=BACK');
-  lines.push(...(metarRaw ? wrap('M ' + metarRaw, 2) : ['M  no METAR']));
-  lines.push(...(tafRaw ? wrap('T ' + tafRaw, 4) : ['T  no TAF']));
+  lines.push(...(metarRaw ? wrap('M ' + bare(metarRaw), 2) : ['M  no METAR']));
+  lines.push(...(tafRaw ? wrap('T ' + bare(tafRaw), 4) : ['T  no TAF']));
   return lines.slice(0, 8).map((text, i) => ({
     id: i + 1,
     x: MARGIN,
@@ -190,6 +212,11 @@ function wrap(text: string, maxLines: number, width = 46): string[] {
   }
   if (cur && lines.length < maxLines) lines.push(lines.length ? '  ' + cur : cur);
   return lines;
+}
+
+/** Drop a leading report-type word — the line's M/T label already says it. */
+function bare(raw: string): string {
+  return raw.replace(/^(METAR|SPECI|TAF)\s+/, '');
 }
 
 /** ATIS/COM frequency in MHz, trimmed: 128.85, 126.8, 118 -> "118.0". */
@@ -227,8 +254,8 @@ function buildDest(s: HudState): HudContainer[] {
   const header = `DEST ${d.ident}  ${arr}  ${rwy} ${wx}${verdict}`;
   const lines: string[] = [header];
   if (d.atisMhz) lines.push(`ATIS ${fmtFreq(d.atisMhz)}`);
-  lines.push(...(d.metarRaw ? wrap('M ' + d.metarRaw, 2) : ['M  no METAR — fetch before departure']));
-  lines.push(...(d.tafRaw ? wrap('T ' + d.tafRaw, 4) : ['T  no TAF']));
+  lines.push(...(d.metarRaw ? wrap('M ' + bare(d.metarRaw), 2) : ['M  no METAR - fetch before departure']));
+  lines.push(...(d.tafRaw ? wrap('T ' + bare(d.tafRaw), 4) : ['T  no TAF']));
   return lines.slice(0, 8).map((text, i) => ({
     id: i + 1,
     x: MARGIN,
@@ -259,7 +286,7 @@ function buildSettings(s: HudState): HudContainer[] {
     lines.push(`${marker}${r}`);
   });
   lines.push('Swipe: CRUISE - DIVERT - DEST - SETTINGS');
-  lines.push('CRUISE: hold = peek info, 2tap = keep it on');
+  lines.push('CRUISE: hold=peek  tap=keep  2tap=exit');
   return lines.map((text, i) => ({
     id: 1 + i,
     x: MARGIN,

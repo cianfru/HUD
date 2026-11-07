@@ -70,8 +70,8 @@ export class EvenSdkBridge implements GlassesBridge {
     await this.bridge.textContainerUpgrade(upgrade);
   }
 
-  async shutdown(): Promise<void> {
-    await this.bridge.shutDownPageContainer();
+  async shutdown(confirm = true): Promise<void> {
+    await this.bridge.shutDownPageContainer(confirm ? 1 : 0);
   }
 
   onGesture(cb: (g: Gesture) => void): () => void {
